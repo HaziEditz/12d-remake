@@ -1,0 +1,46 @@
+Things to fix:
+All premium features allowed on school plan
+Make Light Mode be more appealing
+Profile pictures showing on all places where it should
+Fix the Admin Panel so that the other screens for trading tips, insights etc. (currently lessons only work)
+Notifications not sending you to the page they belong to
+Remove Strategies as a premium feature
+After logging out, send to the home screen or a you must sign in screen
+Simulator link from the school world bugging
+Change Lessons Tab name to Academy
+NFLX data same as BTC/USD
+Signing in with username not working
+Risk Calc not having the premium logo and not beside the other premium features
+Timestamps changing the data and price of the stocks in Simulator
+Timeframe wrong on Simulator
+Timestamps not changing the timeframes on Simulator
+Historical Data not staying the same after refreshing or switching stocks
+Leaderboard by local just showing every account
+Remove achievements for 'complete all lessons' etc. when new lessons of that category are added
+Link to the Simulator not working in Strategies
+Help button not working beside Light Mode
+Make Terminal able to execute trades and more
+Able to add more stocks to watch from the Terminal
+Add the friend function back
+Make Market News links send you to legitimate websites where this information was sourced
+Class Leaderboard showing all players in the School World
+Pay Option for the teachers when quoting the price and pay shouldn't be on the students account
+Prices of stocks should continue changing while your in a different tab or just in another screen
+Open positions not showing your current trades in School World
+Tokens not counting up in School World
+Replace the strategy challenge with a different challenge in School World
+Add more scenarios and quizzes for the challenges so that you don't do the same quiz every time in School World
+Levels not showing when looking at someone's profile
+
+
+
+Things to add:
+Admins able to select wider categories and sorting for Lessons
+Pictures for each stock on Watchlist for each companies logo
+Able to set price notifications for stocks for both Simulator and Watchlist which will appear in Notifications
+Dashboard should say more about "this is how you track your real life shares"
+A DISCLAIMER EVERY TIME YOU SIGN IN "This is not financial advise, 12Digits is for educational purposes only"
+Have a line where you opened a trade in Simulator on the chart
+You HAVE to state what school you're from and accepted to buy the school plan
+Cosmetics or something to spend your Tokens on in School World
+

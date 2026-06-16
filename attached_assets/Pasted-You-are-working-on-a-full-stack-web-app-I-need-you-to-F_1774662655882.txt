@@ -1,0 +1,49 @@
+You are working on a full-stack web app. I need you to FIX bugs only — do not redesign or refactor the app.
+
+Here is the complete list of current issues:
+
+CORE FUNCTIONAL BUGS:
+
+1. Simulator timeframe is incorrect.
+2. Historical stock data does not persist — prices change after refreshing or switching stocks.
+3. Stock prices stop updating when the user switches tabs or leaves the screen — they should continue updating.
+4. Terminal is not fully functional — it should allow executing trades properly.
+
+ADMIN / SYSTEM LOGIC:
+5. Leaderboard (local) shows no users.
+6. Friend system is missing from leaderboard and profiles — needs to be restored.
+7. Levels are not displaying on user profiles.
+8. Promo codes for school plans do not work at all.
+9. Teacher payment flow is incorrect — payments should not go through student accounts.
+
+UI / FEATURE ISSUES:
+10. Risk Calculator is missing the premium (crown) icon and is not grouped with other premium features.
+11. Help button next to Light Mode does not work.
+12. Market News links do not go to real/legitimate sources — they must link to actual relevant articles.
+13. Achievements like “complete all lessons” do not update when new lessons are added.
+14. Strategy Challenge in School World needs to be replaced with a different challenge.
+15. School World challenges repeat the same quizzes — need more variety and rotation.
+16. User profiles do not show levels.
+
+STRICT INSTRUCTIONS:
+
+* Do NOT redesign the UI
+* Do NOT remove existing working features
+* Do NOT introduce new libraries
+* ONLY fix broken functionality
+
+WHAT YOU MUST DO:
+
+* Fix each issue listed above
+* Ensure all features behave consistently and logically
+* Ensure persistence works correctly (especially simulator data)
+* Ensure UI elements display correctly where expected
+* Ensure links and interactions work properly
+
+After completing:
+
+* Clearly list each fix you made
+* Explain what was causing the issue
+* Confirm the app runs without errors
+
+Do not skip any issue.

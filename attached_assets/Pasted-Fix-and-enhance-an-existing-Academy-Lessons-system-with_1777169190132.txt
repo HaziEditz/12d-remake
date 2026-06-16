@@ -1,0 +1,166 @@
+Fix and enhance an existing Academy/Lessons system with focus on bug fixes, quiz integration, and teacher-school functionality.
+
+---
+
+## GOAL
+
+Ensure all core systems (stats, streaks, quizzes, teacher assignments) work correctly and are fully integrated into the platform.
+
+---
+
+1. FIX USER STATS SYSTEM
+
+---
+
+Issues:
+
+* User stats (XP, level, completed lessons) are not updating or displaying correctly.
+
+Tasks:
+
+* Ensure XP updates after:
+
+  * Lesson completion
+  * Quiz completion
+* Ensure level updates based on XP thresholds
+* Fix frontend display of:
+
+  * XP
+  * Level
+  * Progress bar
+* Recalculate stats on login to prevent desync
+* Add fallback logic if data is missing or corrupted
+
+---
+
+2. FIX STREAK SYSTEM
+
+---
+
+Issues:
+
+* Streaks are not updating correctly or resetting properly.
+
+Tasks:
+
+* Track lastActiveDate for each user
+* Logic:
+
+  * If user completes a lesson today AND lastActiveDate = yesterday → streak +1
+  * If lastActiveDate is more than 1 day ago → reset streak to 1
+  * If same day → do not increase streak again
+* Update lastActiveDate after lesson completion
+* Display streak correctly on dashboard
+* Handle timezone properly (use consistent date format)
+
+---
+
+3. ADD QUIZ SYSTEM TO LESSONS
+
+---
+
+Tasks:
+
+* Each lesson must end with a quiz (2–5 questions)
+* Question types:
+
+  * Multiple choice
+  * Short answer (optional)
+* Add:
+
+  * Instant feedback (correct/incorrect)
+  * Explanation for wrong answers
+  * Retry option
+* Only mark lesson as complete AFTER passing quiz
+* Award XP only after quiz completion
+* Store quiz results (score, attempts)
+
+---
+
+4. TEACHER & SCHOOL INTEGRATION
+
+---
+
+Tasks:
+
+* Teachers can assign lessons to students
+* Create “Assignments” system:
+
+  * lessonId
+  * classId
+  * dueDate
+  * completion status
+
+Student side:
+
+* View assigned lessons
+* See deadlines
+* Mark complete after passing quiz
+
+Teacher side:
+
+* Dashboard to:
+
+  * View student progress
+  * See who completed assignments
+  * See quiz scores
+  * Track class performance
+
+---
+
+5. DATA STRUCTURE FIXES
+
+---
+
+Ensure user model includes:
+
+* xp (number)
+* level (number)
+* streak (number)
+* lastActiveDate (date)
+* completedLessons (array)
+* quizResults (array)
+
+Assignment model:
+
+* lessonId
+* classId
+* dueDate
+* completedBy (array of user IDs)
+
+---
+
+6. FRONTEND FIXES
+
+---
+
+* Fix dashboard stats display (real-time updates after lesson)
+* Add quiz UI at end of lessons
+* Show:
+
+  * Score
+  * XP gained
+* Add “Continue” button after completion
+
+---
+
+7. CODE REQUIREMENTS
+
+---
+
+* Debug existing code instead of rewriting everything
+* Keep modular structure
+* Ensure data consistency between frontend and backend
+* Handle edge cases (missing data, duplicate completions)
+
+---
+
+## RESULT
+
+A fully working system where:
+
+* Stats update correctly
+* Streaks behave properly
+* Lessons include quizzes
+* Teachers can assign and track student work
+* Students have a complete learning experience

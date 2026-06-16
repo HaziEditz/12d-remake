@@ -1,0 +1,79 @@
+=> Deploying...
+Menu
+==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+==> Running 'npm run start'
+> rest-express@1.0.0 start
+> NODE_ENV=production node dist/index.mjs
+file:///opt/render/project/src/dist/index.mjs:1
+var PP=Object.create;var Ul=Object.defineProperty;var AP=Object.getOwnPropertyDescriptor;var IP=Object.getOwnPropertyNames;var NP=Object.getPrototypeOf,jP=Object.prototype.hasOwnProperty;var k=(t=>typeof require<"u"?require:typeof Proxy<"u"?new Proxy(t,{get:(e,r)=>(typeof require<"u"?require:e)[r]}):t)(function(t){if(typeof require<"u")return require.apply(this,arguments);throw Error('Dynamic require of "'+t+'" is not supported')});var OP=(t,e)=>()=>(t&&(e=t(t=0)),e);var y=(t,e)=>()=>(e||t((e={exports:{}}).exports,e),e.exports),zl=(t,e)=>{for(var r in e)Ul(t,r,{get:e[r],enumerable:!0})},qP=(t,e,r,n)=>{if(e&&typeof e=="object"||typeof e=="function")for(let i of IP(e))!jP.call(t,i)&&i!==r&&Ul(t,i,{get:()=>e[i],enumerable:!(n=AP(e,i))||n.enumerable});return t};var Xt=(t,e,r)=>(r=t!=null?PP(NP(t)):{},qP(e||!t||!t.__esModule?Ul(r,"default",{value:t,enumerable:!0}):r,t));var Yt=y((H$,Ny)=>{var RP=k("path").relative;Ny.exports=FP;var LP=process.cwd();function Ay(t,e){for(var r=t.split(/[ ,]+/),n=String(e).toLowerCase(),i=0;i<r.length;i++){var s=r[i];if(s&&(s==="*"||s.toLowerCase()===n))return!0}return!1}function MP(t,e,r){var n=Object.getOwnPropertyDescriptor(t,e),i=n.value;return n.get=function(){return i},n.writable&&(n.set=function(a){return i=a}),delete n.value,delete n.writable,Object.defineProperty(t,e,n),n}function DP(t){for(var e="",r=0;r<t;r++)e+=", arg"+r;return e.substr(2)}function BP(t){var e=this.name+": "+this.namespace;this.message&&(e+=" deprecated "+this.message);for(var r=0;r<t.length;r++)e+=`
+                                                                                                                                                                                                                                                                                                                                                                                             ^
+Error: Dynamic require of "path" is not supported
+    at file:///opt/render/project/src/dist/index.mjs:1:382
+    at file:///opt/render/project/src/dist/index.mjs:1:905
+    at file:///opt/render/project/src/dist/index.mjs:1:494
+    at file:///opt/render/project/src/dist/index.mjs:20:32539
+    at file:///opt/render/project/src/dist/index.mjs:1:494
+    at file:///opt/render/project/src/dist/index.mjs:63:582
+    at file:///opt/render/project/src/dist/index.mjs:1:494
+    at file:///opt/render/project/src/dist/index.mjs:63:1653
+    at file:///opt/render/project/src/dist/index.mjs:1:494
+    at file:///opt/render/project/src/dist/index.mjs:101:2127
+Node.js v22.16.0
+==> Exited with status 1
+==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
+==> Running 'npm run start'
+> rest-express@1.0.0 start
+> NODE_ENV=production node dist/index.mjs
+file:///opt/render/project/src/dist/index.mjs:1
+var PP=Object.create;var Ul=Object.defineProperty;var AP=Object.getOwnPropertyDescriptor;var IP=Object.getOwnPropertyNames;var NP=Object.getPrototypeOf,jP=Object.prototype.hasOwnProperty;var k=(t=>typeof require<"u"?require:typeof Proxy<"u"?new Proxy(t,{get:(e,r)=>(typeof require<"u"?require:e)[r]}):t)(function(t){if(typeof require<"u")return require.apply(this,arguments);throw Error('Dynamic require of "'+t+'" is not supported')});var OP=(t,e)=>()=>(t&&(e=t(t=0)),e);var y=(t,e)=>()=>(e||t((e={exports:{}}).exports,e),e.exports),zl=(t,e)=>{for(var r in e)Ul(t,r,{get:e[r],enumerable:!0})},qP=(t,e,r,n)=>{if(e&&typeof e=="object"||typeof e=="function")for(let i of IP(e))!jP.call(t,i)&&i!==r&&Ul(t,i,{get:()=>e[i],enumerable:!(n=AP(e,i))||n.enumerable});return t};var Xt=(t,e,r)=>(r=t!=null?PP(NP(t)):{},qP(e||!t||!t.__esModule?Ul(r,"default",{value:t,enumerable:!0}):r,t));var Yt=y((H$,Ny)=>{var RP=k("path").relative;Ny.exports=FP;var LP=process.cwd();function Ay(t,e){for(var r=t.split(/[ ,]+/),n=String(e).toLowerCase(),i=0;i<r.length;i++){var s=r[i];if(s&&(s==="*"||s.toLowerCase()===n))return!0}return!1}function MP(t,e,r){var n=Object.getOwnPropertyDescriptor(t,e),i=n.value;return n.get=function(){return i},n.writable&&(n.set=function(a){return i=a}),delete n.value,delete n.writable,Object.defineProperty(t,e,n),n}function DP(t){for(var e="",r=0;r<t;r++)e+=", arg"+r;return e.substr(2)}function BP(t){var e=this.name+": "+this.namespace;this.message&&(e+=" deprecated "+this.message);for(var r=0;r<t.length;r++)e+=`
+                                                                                                                                                                                                                                                                                                                                                                                             ^
+Error: Dynamic require of "path" is not supported
+    at file:///opt/render/project/src/dist/index.mjs:1:382
+    at file:///opt/render/project/src/dist/index.mjs:1:905
+    at file:///opt/render/project/src/dist/index.mjs:1:494
+    at file:///opt/render/project/src/dist/index.mjs:20:32539
+    at file:///opt/render/project/src/dist/index.mjs:1:494
+    at file:///opt/render/project/src/dist/index.mjs:63:582
+    at file:///opt/render/project/src/dist/index.mjs:1:494
+    at file:///opt/render/project/src/dist/index.mjs:63:1653
+    at file:///opt/render/project/src/dist/index.mjs:1:494
+    at file:///opt/render/project/src/dist/index.mjs:101:2127
+Node.js v22.16.0
+==> No open ports detected, continuing to scan...
+==> Docs on specifying a port: https://render.com/docs/web-services#port-binding
+==> Running 'npm run start'
+> rest-express@1.0.0 start
+> NODE_ENV=production node dist/index.mjs
+file:///opt/render/project/src/dist/index.mjs:1
+var PP=Object.create;var Ul=Object.defineProperty;var AP=Object.getOwnPropertyDescriptor;var IP=Object.getOwnPropertyNames;var NP=Object.getPrototypeOf,jP=Object.prototype.hasOwnProperty;var k=(t=>typeof require<"u"?require:typeof Proxy<"u"?new Proxy(t,{get:(e,r)=>(typeof require<"u"?require:e)[r]}):t)(function(t){if(typeof require<"u")return require.apply(this,arguments);throw Error('Dynamic require of "'+t+'" is not supported')});var OP=(t,e)=>()=>(t&&(e=t(t=0)),e);var y=(t,e)=>()=>(e||t((e={exports:{}}).exports,e),e.exports),zl=(t,e)=>{for(var r in e)Ul(t,r,{get:e[r],enumerable:!0})},qP=(t,e,r,n)=>{if(e&&typeof e=="object"||typeof e=="function")for(let i of IP(e))!jP.call(t,i)&&i!==r&&Ul(t,i,{get:()=>e[i],enumerable:!(n=AP(e,i))||n.enumerable});return t};var Xt=(t,e,r)=>(r=t!=null?PP(NP(t)):{},qP(e||!t||!t.__esModule?Ul(r,"default",{value:t,enumerable:!0}):r,t));var Yt=y((H$,Ny)=>{var RP=k("path").relative;Ny.exports=FP;var LP=process.cwd();function Ay(t,e){for(var r=t.split(/[ ,]+/),n=String(e).toLowerCase(),i=0;i<r.length;i++){var s=r[i];if(s&&(s==="*"||s.toLowerCase()===n))return!0}return!1}function MP(t,e,r){var n=Object.getOwnPropertyDescriptor(t,e),i=n.value;return n.get=function(){return i},n.writable&&(n.set=function(a){return i=a}),delete n.value,delete n.writable,Object.defineProperty(t,e,n),n}function DP(t){for(var e="",r=0;r<t;r++)e+=", arg"+r;return e.substr(2)}function BP(t){var e=this.name+": "+this.namespace;this.message&&(e+=" deprecated "+this.message);for(var r=0;r<t.length;r++)e+=`
+                                                                                                                                                                                                                                                                                                                                                                                             ^
+Error: Dynamic require of "path" is not supported
+    at file:///opt/render/project/src/dist/index.mjs:1:382
+    at file:///opt/render/project/src/dist/index.mjs:1:905
+    at file:///opt/render/project/src/dist/index.mjs:1:494
+    at file:///opt/render/project/src/dist/index.mjs:20:32539
+    at file:///opt/render/project/src/dist/index.mjs:1:494
+    at file:///opt/render/project/src/dist/index.mjs:63:582
+    at file:///opt/render/project/src/dist/index.mjs:1:494
+    at file:///opt/render/project/src/dist/index.mjs:63:1653
+    at file:///opt/render/project/src/dist/index.mjs:1:494
+    at file:///opt/render/project/src/dist/index.mjs:101:2127
+Node.js v22.16.0
+==> Running 'npm run start'
+> rest-express@1.0.0 start
+> NODE_ENV=production node dist/index.mjs
+file:///opt/render/project/src/dist/index.mjs:1
+var PP=Object.create;var Ul=Object.defineProperty;var AP=Object.getOwnPropertyDescriptor;var IP=Object.getOwnPropertyNames;var NP=Object.getPrototypeOf,jP=Object.prototype.hasOwnProperty;var k=(t=>typeof require<"u"?require:typeof Proxy<"u"?new Proxy(t,{get:(e,r)=>(typeof require<"u"?require:e)[r]}):t)(function(t){if(typeof require<"u")return require.apply(this,arguments);throw Error('Dynamic require of "'+t+'" is not supported')});var OP=(t,e)=>()=>(t&&(e=t(t=0)),e);var y=(t,e)=>()=>(e||t((e={exports:{}}).exports,e),e.exports),zl=(t,e)=>{for(var r in e)Ul(t,r,{get:e[r],enumerable:!0})},qP=(t,e,r,n)=>{if(e&&typeof e=="object"||typeof e=="function")for(let i of IP(e))!jP.call(t,i)&&i!==r&&Ul(t,i,{get:()=>e[i],enumerable:!(n=AP(e,i))||n.enumerable});return t};var Xt=(t,e,r)=>(r=t!=null?PP(NP(t)):{},qP(e||!t||!t.__esModule?Ul(r,"default",{value:t,enumerable:!0}):r,t));var Yt=y((H$,Ny)=>{var RP=k("path").relative;Ny.exports=FP;var LP=process.cwd();function Ay(t,e){for(var r=t.split(/[ ,]+/),n=String(e).toLowerCase(),i=0;i<r.length;i++){var s=r[i];if(s&&(s==="*"||s.toLowerCase()===n))return!0}return!1}function MP(t,e,r){var n=Object.getOwnPropertyDescriptor(t,e),i=n.value;return n.get=function(){return i},n.writable&&(n.set=function(a){return i=a}),delete n.value,delete n.writable,Object.defineProperty(t,e,n),n}function DP(t){for(var e="",r=0;r<t;r++)e+=", arg"+r;return e.substr(2)}function BP(t){var e=this.name+": "+this.namespace;this.message&&(e+=" deprecated "+this.message);for(var r=0;r<t.length;r++)e+=`
+                                                                                                                                                                                                                                                                                                                                                                                             ^
+Error: Dynamic require of "path" is not supported
+    at file:///opt/render/project/src/dist/index.mjs:1:382
+    at file:///opt/render/project/src/dist/index.mjs:1:905
+    at file:///opt/render/project/src/dist/index.mjs:1:494
+    at file:///opt/render/project/src/dist/index.mjs:20:32539
+    at file:///opt/render/project/src/dist/index.mjs:1:494
+    at file:///opt/render/project/src/dist/index.mjs:63:582
+    at file:///opt/render/project/src/dist/index.mjs:1:494
+    at file:///opt/render/project/src/dist/index.mjs:63:1653
+    at file:///opt/render/project/src/dist/index.mjs:1:494
+    at file:///opt/render/project/src/dist/index.mjs:101:2127
+Node.js v22.16.0

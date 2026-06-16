@@ -1,0 +1,58 @@
+==> Downloading cache...
+==> Cloning from https://github.com/HaziEditz/12D
+	status code: 403, request id: 4WGZQB4YKS69TNNE, host id: 6SlpfJksD+PoPiXB1PwaaKIxKfbh/3XoRigf97D5JWQfVWVQrgwbKEBCfsjCE+CLES7s+dLlgNQM9ivBVk9mIQ==
+==> No cache found, continuing without cache
+==> Checking out commit ffa0ce063ceb2705e6797cbedc636837f2a4a67f in branch main
+==> Using Node.js version 22.16.0 (default)
+==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+==> Running build command 'npm install && npm run build'...
+added 856 packages, and audited 857 packages in 21s
+114 packages are looking for funding
+  run `npm fund` for details
+44 vulnerabilities (10 low, 8 moderate, 25 high, 1 critical)
+To address issues that do not require attention, run:
+  npm audit fix
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+Run `npm audit` for details.
+> rest-express@1.0.0 build
+> tsx script/build.ts
+building client...
+vite v5.4.20 building for production...
+transforming...
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+✓ 3042 modules transformed.
+rendering chunks...
+computing gzip size...
+../dist/public/index.html                                                    2.56 kB │ gzip:   0.97 kB
+../dist/public/assets/professional_trading_desk_hero_image-BalDVDM-.png  1,346.10 kB
+../dist/public/assets/index-bilGZliB.css                                   113.46 kB │ gzip:  17.26 kB
+../dist/public/assets/index-6aLXXgVz.js                                  1,817.19 kB │ gzip: 516.59 kB
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 12.62s
+building server...
+✘ [ERROR] Top-level await is currently not supported with the "cjs" output format
+    server/routes.ts:11:17:
+      11 │   const paypal = await import("./paypal");
+         ╵                  ~~~~~
+1 error
+Error: Build failed with 1 error:
+server/routes.ts:11:17: ERROR: Top-level await is currently not supported with the "cjs" output format
+    at failureErrorWithLog (/opt/render/project/src/node_modules/esbuild/lib/main.js:1467:15)
+    at /opt/render/project/src/node_modules/esbuild/lib/main.js:926:25
+    at /opt/render/project/src/node_modules/esbuild/lib/main.js:878:52
+    at buildResponseToResult (/opt/render/project/src/node_modules/esbuild/lib/main.js:924:7)
+    at /opt/render/project/src/node_modules/esbuild/lib/main.js:951:16
+    at responseCallbacks.<computed> (/opt/render/project/src/node_modules/esbuild/lib/main.js:603:9)
+    at handleIncomingPacket (/opt/render/project/src/node_modules/esbuild/lib/main.js:658:12)
+    at Socket.readFromStdout (/opt/render/project/src/node_modules/esbuild/lib/main.js:581:7)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12) {
+  errors: [Getter/Setter],
+  warnings: [Getter/Setter]
+}
+==> Build failed 😞
+==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys

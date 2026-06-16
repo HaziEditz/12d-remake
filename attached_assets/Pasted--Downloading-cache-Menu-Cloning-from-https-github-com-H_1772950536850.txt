@@ -1,0 +1,84 @@
+==> Downloading cache...
+Menu
+==> Cloning from https://github.com/HaziEditz/12D
+==> Checking out commit c4734cb06c20fbefb130f7f10a356994021f08b2 in branch main
+==> Downloaded 289MB in 3s. Extraction took 12s.
+==> Using Node.js version 22.16.0 (default)
+==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+==> Running build command 'npm install && npm run build'...
+up to date, audited 858 packages in 3s
+117 packages are looking for funding
+  run `npm fund` for details
+41 vulnerabilities (7 low, 8 moderate, 25 high, 1 critical)
+To address issues that do not require attention, run:
+  npm audit fix
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+Run `npm audit` for details.
+> rest-express@1.0.0 build
+> tsx script/build.ts
+building client...
+vite v5.4.21 building for production...
+transforming...
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+✓ 3430 modules transformed.
+rendering chunks...
+computing gzip size...
+../dist/public/index.html                                                    2.56 kB │ gzip:   0.97 kB
+../dist/public/assets/professional_trading_desk_hero_image-BalDVDM-.png  1,346.10 kB
+../dist/public/assets/index-B5ZIJhi9.css                                   159.79 kB │ gzip:  23.94 kB
+../dist/public/assets/index-kdFNaUh7.js                                  2,227.64 kB │ gzip: 622.47 kB
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 14.48s
+building server...
+  dist/index.mjs  163.1kb
+⚡ Done in 17ms
+✓ Build complete
+==> Uploading build...
+==> Uploaded in 7.7s. Compression took 10.9s
+==> Build successful 🎉
+==> Deploying...
+==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+==> No open ports detected, continuing to scan...
+==> Docs on specifying a port: https://render.com/docs/web-services#port-binding
+==> Running 'npm run start'
+> rest-express@1.0.0 start
+> NODE_ENV=production node dist/index.mjs
+(node:80) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+To prepare for this change:
+- If you want the current behavior, explicitly use 'sslmode=verify-full'
+- If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Failed to start server: error: relation "users" does not exist
+    at /opt/render/project/src/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///opt/render/project/src/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async DatabaseStorage.getUserByEmail (file:///opt/render/project/src/dist/index.mjs:562:20)
+    at async ensureAdminUser (file:///opt/render/project/src/dist/index.mjs:1526:25)
+    at async registerRoutes (file:///opt/render/project/src/dist/index.mjs:1925:3)
+    at async file:///opt/render/project/src/dist/index.mjs:3792:5 {
+  length: 105,
+  severity: 'ERROR',
+  code: '42P01',
+  detail: undefined,
+  hint: undefined,
+  position: '354',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '1449',
+  routine: 'parserOpenTable'
+}
+==> Exited with status 1
+==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys

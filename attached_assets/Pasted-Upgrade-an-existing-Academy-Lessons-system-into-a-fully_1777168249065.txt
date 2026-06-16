@@ -1,0 +1,188 @@
+Upgrade an existing “Academy/Lessons” system into a fully gamified, highly engaging learning experience inspired by platforms like Duolingo, while keeping the current lesson content intact.
+
+DO NOT rebuild the system. Enhance it with advanced gamification, interactivity, personalization, and modern UI/UX.
+
+---
+
+## CORE SYSTEMS
+
+1. Advanced XP & Leveling:
+
+* Award XP for:
+
+  * Completing lessons
+  * Passing quizzes
+  * Daily challenges
+* Create a level system (Level 1–100+)
+* Add level progression bar
+* Unlock rewards on level up (themes, badges, bonus XP)
+
+2. Streak & Consistency System:
+
+* Track daily streaks (minimum 1 lesson per day)
+* Display streak with flame icon
+* Add streak milestones (3, 7, 14, 30 days)
+* Add “streak freeze” (1 free miss without losing streak)
+
+3. Smart Lesson Completion System:
+
+* Each lesson ends with an interactive quiz (2–5 questions)
+* Question types:
+
+  * Multiple choice
+  * Fill in the blank
+  * “Fix the mistake”
+* Instant feedback:
+
+  * Correct → animation + XP reward
+  * Incorrect → explanation + retry
+* Only mark lesson complete after passing
+
+4. Daily Challenges & Missions:
+
+* Generate daily tasks:
+
+  * “Complete 2 lessons”
+  * “Earn 50 XP”
+* Reward bonus XP or items
+* Reset every 24 hours
+* Show progress bar for daily goals
+
+---
+
+## ENGAGEMENT & FUN FEATURES
+
+5. Progress Path (Duolingo-style):
+
+* Replace lesson list with a visual path/journey
+* Lessons appear as nodes connected in a path
+* Locked nodes until previous completed
+* Smooth scrolling and animations
+
+6. Achievements & Rewards:
+
+* Add achievement system:
+
+  * First lesson
+  * 7-day streak
+  * 500 XP earned
+* Show badge collection page
+* Unlock cosmetic rewards (themes, avatars)
+
+7. “Boss Levels”:
+
+* After each unit, add a harder challenge level
+* Requires higher accuracy to pass
+* Gives large XP reward
+
+8. Surprise Mechanics:
+
+* Random bonus XP after lesson completion
+* Mystery reward system
+* Optional spin wheel for rewards after milestones
+
+---
+
+## PERSONALIZATION & INTELLIGENCE
+
+9. Adaptive Learning:
+
+* Track user performance per topic
+* Suggest:
+
+  * “You should review this lesson again”
+* Adjust difficulty based on performance
+
+10. Performance Feedback:
+
+* Show insights:
+
+  * Accuracy %
+  * Speed improvement
+  * “You improved by X%”
+* Encourage progress with positive feedback
+
+---
+
+## SOCIAL & COMPETITIVE
+
+11. Leaderboards:
+
+* Weekly XP leaderboard
+* Show top users
+* Optional friends leaderboard
+
+12. User Profiles:
+
+* Show:
+
+  * Level
+  * XP
+  * Streak
+  * Achievements
+* Allow simple avatar/customization
+
+---
+
+## UI/UX (VERY IMPORTANT)
+
+13. Modern Interface:
+
+* Clean card-based UI with gradients
+* Smooth animations (fade, slide, scale)
+* Micro-interactions (hover effects, button feedback)
+
+14. Lesson Completion Experience:
+
+* Modal popup with:
+
+  * XP gained
+  * Level progress bar
+  * Streak update
+* Add confetti or celebration animation
+* “Continue to next lesson” button
+
+15. Fully Responsive:
+
+* Works perfectly on mobile and desktop
+
+---
+
+## BACKEND REQUIREMENTS
+
+16. Extend User Model:
+
+* xp: number
+* level: number
+* streak: number
+* lastActiveDate: date
+* completedLessons: array
+* achievements: array
+
+17. Data Handling:
+
+* Save progress after each lesson
+* Track quiz performance
+* Store daily challenge completion
+
+---
+
+## CODE REQUIREMENTS
+
+18. Keep existing lesson system intact
+19. Use modular structure:
+
+* Quiz system module
+* XP system module
+* Streak system module
+* UI components (modals, progress bars)
+
+20. Clean, maintainable, scalable code
+
+---
+
+## GOAL
+
+Transform the academy into a highly engaging, game-like learning platform that motivates users to return daily, complete lessons, and feel rewarded for progress.
+
+The experience should feel smooth, modern, and addictive while remaining educational.

@@ -1,0 +1,79 @@
+Things to fix:
+Filter button not working on Lessons
+Achievements not instantly unlocking in Achievements
+Make trading strategies available for students on Strategies
+Make Light Mode be more appealing
+Profile pictures in Settings
+Make Market News & Economic Calendar more recent
+View all button for achievements on a friend's Profile
+Being able to join and add existing accounts to Classrooms
+When students are created they shouldn't have a 14 day trial, and the teachers should be able to bulk buy memberships for their students
+Make the Admin Panel so its full screen and not in segments for each panel
+Admins should be able to add and remove promo codes for the plans on the Admin Panel
+It should shouldn't say Pay with PayPal when you go to buy a subscription
+Payments Annually
+Notifications not sending you to the page they belong to
+Free Trial days not counting
+Microsoft has the same data as bitcoin
+time stamps not visible cuz they're black
+
+
+
+Things to add:
+Scrolling back and forth on Simulator
+Quizzes at the each of each Lessons
+Wider categories and sorting on Lessons
+A scroll wheel when adding an investment on Dashboard & Watchlist
+A tutorial when you first sign up
+Be able to change from Global to Local on Leaderboard
+Account Levels
+Pictures for each stock on Watchlist
+Add more market insights on Tips
+Able to set price notifications for both Simulator and Watchlist which will appear in Notifications
+Add Risk Calculator where Terminal was removed
+Able to sign in with username as well as email on Log In
+Teachers able to make assignments for students to complete
+Students have their own menu for classroom and see the class leaderboard and see assignments
+People have to choose what school they're from when choosing the school plan
+Financial side to the admin page
+
+FIXED:
+Closing a trade taking too long on Simulator
+Being able to close multiple of the same trade on Simulator
+Time stamps on Simulator
+Showing wrong information about virtual balance on Home Page
+Change Trade Journal track your trades from the Simulator
+Individual stock prices not keeping a constant value, keeps on changing between refreshes and time swaps on Simulator
+
+Things to remove:
+Stats about the website on Home Page
+Terminal
+
+
+My to-do list:
+Add links to the end of each lesson
+Repurpose the Tips menu
+
+
+
+Future ideas:
+personal AI for any questions
+Cosmetics and Shop to spend XP
+Adult & Kids versions
+Better version
+Quotes for teachers for what they want and
+Referral codes
+
+
+Design Ideas:
+Make trading fun
+Kid friendly
+Colourful but tuff
+More animations and personalization
+Categorizing most things
+
+
+
+Things to buy:
+Replit core - $25 NZD per m
+GoDaddy domain: 12digits.co.nz - $39.99 NZD per y

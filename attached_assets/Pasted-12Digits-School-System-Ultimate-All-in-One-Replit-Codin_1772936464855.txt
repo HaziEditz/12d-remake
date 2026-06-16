@@ -1,0 +1,209 @@
+12Digits School System – Ultimate All-in-One Replit Coding Instructions (With Age Groups)
+
+Goal: Build a fully interactive, gamified financial education platform for schools. Features include onboarding, school payment portal, classroom economy, dashboards, gamification, Fun Zone mini-games, analytics, notifications, teacher-student collaboration, and age-group systems (primary, intermediate, high school).
+
+1. Animated Onboarding & School Portal
+
+Full-screen onboarding for teachers.
+
+Welcome message: “Welcome to 12Digits – finance made easy for your students.”
+
+Smooth scroll animations: fade-ins, slide-ins, parallax.
+
+Feature showcases:
+
+Portfolio simulations
+
+Classroom competitions
+
+Gamified learning
+
+Lesson previews
+
+Fun Zone games
+
+Custom School Payment / Quote Portal:
+
+Inputs: school name, admin name, email, plan selection.
+
+Generate instant dynamic quote.
+
+“Pay Now” button (simulate payment).
+
+Animated transitions for form fields and buttons.
+
+Call-to-action animation: “Satisfied with us? Begin here today,” leading to classroom setup.
+
+2. Age-Group Systems
+
+Schools choose an age group during setup:
+
+Primary (ages 6–10):
+
+Simple financial concepts: coins, basic saving/spending.
+
+Fun graphics, colorful dashboards, cute animations.
+
+Mini-games: coin sorting, simple budgeting, interactive quizzes with rewards.
+
+Short lessons with visual storytelling and gamified exercises.
+
+Intermediate (ages 11–13):
+
+Moderate financial concepts: saving, investing, basic stock ideas.
+
+Dashboards include progress bars and simple portfolio simulations.
+
+Mini-games: group investment challenges, market prediction, strategy puzzles.
+
+Lessons include interactive quizzes with scoring.
+
+High School (ages 14–18):
+
+Advanced financial concepts: diversification, risk, investing, simulated markets.
+
+Dashboards: full portfolio simulation, leaderboards, analytics.
+
+Mini-games: team investment challenge, market prediction, strategy puzzles, bonus challenge room.
+
+Lessons include interactive quizzes and scenario-based assignments.
+
+Each age group’s UI, gamification, and difficulty adjust automatically based on selection.
+
+3. Classroom Economy & Interactive Learning
+
+Teacher & student dashboards:
+
+Teachers: create challenges, assign tasks, trigger classroom market events (booms, crashes, custom news).
+
+Students: earn virtual income, manage bank balances, invest in simulated markets, make spending decisions.
+
+Real-time updates and animations for portfolios, leaderboards, and student progress.
+
+Notifications: price alerts, events, achievements, new assignments.
+
+4. Gamification & Fun Zone
+
+Achievement system: level-ups, badges, unlockable features.
+
+Animated pop-ups for rewards.
+
+Fun Zone mini-games:
+
+Team Investment Challenge (groups share portfolios)
+
+Market Prediction Game (predict price changes)
+
+Strategy Puzzle (budgeting, diversification, risk)
+
+Interactive Quiz Game (gamified questions)
+
+Bonus Challenge Room (daily/weekly special challenges)
+
+Age-adapted mini-games:
+
+Primary: visually simple, short, fun exercises.
+
+Intermediate: strategy-focused, moderate complexity.
+
+High school: full market simulations, complex puzzles.
+
+Animations: progress bars, confetti, pop-ups for wins or high scores.
+
+Gamified streaks: rewards for daily/weekly engagement.
+
+5. Lessons & Interactive Learning Enhancements
+
+Interactive quizzes at the end of lessons.
+
+Animated examples: investment principles, diversification, risk.
+
+Sandbox environment for students to simulate strategies and see results.
+
+Teacher-controlled “special scenarios” that affect classroom economy dynamically.
+
+Tips section with market insights adapted per age group.
+
+6. Teacher-Student Collaboration
+
+Teacher dashboard:
+
+Assignments with deadlines
+
+Student progress tracking
+
+Real-time leaderboard
+
+Messaging/feedback on assignments
+
+Student dashboard:
+
+View assignments, progress, leaderboard
+
+Submit tasks, mini-game results
+
+Receive teacher feedback notifications
+
+7. Navigation & Layout
+
+Top or side menu:
+
+Onboarding/Home
+
+Teacher Dashboard
+
+Student Dashboard
+
+Classroom Economy
+
+Fun Zone
+
+Payment Portal / Quote Generator
+
+Responsive design with smooth scroll between sections.
+
+Age-group tailored content appears in relevant dashboards and Fun Zone.
+
+8. Visuals & Animations
+
+Scroll-triggered animations for all sections.
+
+Real-time charts for portfolios and classroom economy.
+
+Fun Zone games with hover effects, scaling, pop-ups.
+
+Age-group themed graphics:
+
+Primary: bright, playful
+
+Intermediate: colorful but more structured
+
+High school: realistic dashboards, professional charts
+
+9. Security & Access Control
+
+Teachers: verified login for onboarding, dashboards, payment portal, scenario creation.
+
+Students: restricted to dashboards, Fun Zone, classroom economy, and progress views.
+
+Placeholder login: username/email + password.
+
+10. Extra “Better Than Banqer” Features
+
+Custom school branding (logos/colors on dashboards, Fun Zone)
+
+Daily financial challenges with points and badges
+
+Virtual currency system for completing tasks (redeemable in Fun Zone)
+
+Advanced analytics: student participation, mini-game stats, portfolio growth
+
+Interactive market simulator with teacher-controlled events
+
+Leaderboard filters: global, classroom, grade-level
+
+Exportable progress reports for teachers
+
+Student progress timeline showing milestones, level-ups, and achievements
+
+Smooth, cohesive animations across all sections

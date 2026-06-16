@@ -1,0 +1,13 @@
+The current system works well when teachers manually add rewards, expenses, and activities, but I would now like to enhance the system so that the School World economy feels more dynamic and engaging even when the teacher is not constantly interacting with it. The goal is to keep the teacher in control while also adding automated systems that keep the financial simulation running smoothly.
+
+First, the system should include automated economic cycles. This means certain events happen automatically on a schedule, such as weekly rent payments, recurring classroom job salaries, interest earned on savings, and passive income from businesses or owned assets. These automated cycles will help the economy feel more realistic and reduce the amount of manual work required from teachers.
+
+Second, the platform should include student progression and achievements. As students participate in the economy, complete lessons, invest, and manage their money, they should unlock achievements or milestones. For example, achievements could include saving a certain amount of money, making their first investment, owning their first asset, or maintaining positive net worth for a period of time. These milestones help motivate students and make the experience feel more like a progression system rather than just a simple classroom tool.
+
+Third, the system should introduce financial dashboards for students. Students should be able to see a clear overview of their financial situation, including their balance, spending history, investments, assets, and net worth. Visual charts or summaries should help them understand how their financial decisions are affecting their progress.
+
+Fourth, teachers should receive analytics and insights about the classroom economy. The platform should show teachers useful summaries such as which students are saving the most, which students are investing the most, average student net worth, and how the classroom economy is evolving over time. This helps teachers guide financial discussions and identify students who may need help.
+
+Finally, the platform should include more interactive financial activities such as budgeting challenges, collaborative investment competitions, and classroom financial games. These activities should reinforce the financial concepts being taught while making the environment more engaging and enjoyable for students.
+
+The goal is to transform the current system from a teacher-controlled economy into a living financial learning environment where automated systems, student progression, and analytics work together to create a deeper educational experience.
