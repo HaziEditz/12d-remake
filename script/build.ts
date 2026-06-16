@@ -20,16 +20,22 @@ async function buildAll() {
     ...Object.keys(pkg.devDependencies || {}),
   ];
 
-  // All Node.js built-ins
-  const nodeBuiltins = [
+  // All Node.js built-ins — listed both bare and with the node: protocol
+  // prefix so that imports like `import { randomUUID } from 'node:crypto'`
+  // are also treated as external and never bundled.
+  const builtinNames = [
     "assert", "async_hooks", "buffer", "child_process", "cluster",
     "console", "constants", "crypto", "dgram", "dns", "domain",
     "events", "fs", "fs/promises", "http", "http2", "https",
     "inspector", "module", "net", "os", "path", "perf_hooks",
     "process", "punycode", "querystring", "readline", "repl",
-    "stream", "string_decoder", "sys", "timers", "tls",
-    "trace_events", "tty", "url", "util", "v8", "vm",
-    "worker_threads", "zlib",
+    "stream", "stream/promises", "string_decoder", "sys", "timers",
+    "timers/promises", "tls", "trace_events", "tty", "url", "util",
+    "v8", "vm", "worker_threads", "zlib",
+  ];
+  const nodeBuiltins = [
+    ...builtinNames,
+    ...builtinNames.map((m) => `node:${m}`),
   ];
 
   // Transpile server code with all deps external
@@ -45,6 +51,7 @@ async function buildAll() {
       "process.env.NODE_ENV": '"production"',
     },
     external: [...allDeps, ...nodeBuiltins],
+    packages: "external",
     minify: false,
     logLevel: "info",
   });
