@@ -39,9 +39,12 @@ import {
   ArrowRight,
   Wallet,
   Activity,
+  Clock,
+  Sparkles,
+  ChevronRight,
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from "recharts";
-import type { PortfolioItem } from "@shared/schema";
+import type { PortfolioItem, Lesson, LessonProgress } from "@shared/schema";
 
 const portfolioItemSchema = z.object({
   symbol: z.string().min(1, "Symbol is required").max(10),
@@ -53,6 +56,149 @@ const portfolioItemSchema = z.object({
 });
 
 type PortfolioFormData = z.infer<typeof portfolioItemSchema>;
+
+// ─── Lesson Recommendations ──────────────────────────────────────────────────
+
+function LessonRecommendations() {
+  const { user } = useAuth();
+  const { data: lessons } = useQuery<Lesson[]>({ queryKey: ["/api/lessons"] });
+  const { data: progress } = useQuery<LessonProgress[]>({
+    queryKey: ["/api/lessons/progress"],
+    enabled: !!user,
+  });
+
+  if (!user || !lessons || lessons.length === 0) return null;
+
+  const completedIds = new Set(
+    progress?.filter(p => p.completed).map(p => p.lessonId) ?? []
+  );
+  const completedCount = completedIds.size;
+
+  // Target difficulty based on progression
+  const targetDiff =
+    completedCount < 4 ? "beginner" :
+    completedCount < 12 ? "intermediate" : "advanced";
+
+  const diffScore = (d: string) => {
+    const order = ["beginner", "intermediate", "advanced"];
+    const target = order.indexOf(targetDiff);
+    const actual = order.indexOf(d.toLowerCase());
+    if (actual === target) return 5;
+    if (actual === target - 1) return 2; // slightly easier
+    if (actual === target + 1) return 1; // slightly harder
+    return 0;
+  };
+
+  // Get categories already visited so we can diversify
+  const visitedCategories = new Set(
+    (lessons ?? []).filter(l => completedIds.has(l.id)).map(l => l.category)
+  );
+
+  const recommended = (lessons ?? [])
+    .filter(l => {
+      if (!l.isPublished) return false;
+      if (completedIds.has(l.id)) return false;
+      const prereqs = (l.prerequisites as string[] | null) ?? [];
+      return prereqs.every(pid => completedIds.has(pid));
+    })
+    .map(l => ({
+      lesson: l,
+      score:
+        diffScore(l.difficulty) +
+        (visitedCategories.has(l.category) ? 0 : 1) - // +1 for new category
+        (l.order ?? 99) * 0.01,
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3)
+    .map(x => x.lesson);
+
+  if (recommended.length === 0) return null;
+
+  const diffColor = (d: string) => {
+    switch (d.toLowerCase()) {
+      case "beginner": return "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10";
+      case "intermediate": return "text-amber-600 dark:text-amber-400 bg-amber-500/10";
+      case "advanced": return "text-rose-600 dark:text-rose-400 bg-rose-500/10";
+      default: return "text-muted-foreground bg-muted";
+    }
+  };
+
+  const progressLabel =
+    completedCount === 0 ? "Just starting out" :
+    completedCount < 5 ? `${completedCount} lessons done · building foundations` :
+    completedCount < 15 ? `${completedCount} lessons done · levelling up` :
+    `${completedCount} lessons done · advanced territory`;
+
+  return (
+    <div className="mb-8">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            Recommended for You
+          </h2>
+          <p className="text-sm text-muted-foreground">{progressLabel}</p>
+        </div>
+        <Link href="/lessons">
+          <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground" data-testid="button-browse-all-lessons">
+            Browse all
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Button>
+        </Link>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-4">
+        {recommended.map((lesson, idx) => (
+          <Link key={lesson.id} href={`/lessons/${lesson.id}`}>
+            <Card
+              className="h-full cursor-pointer hover:border-primary/40 hover:shadow-md transition-all group"
+              data-testid={`card-recommendation-${lesson.id}`}
+            >
+              <CardContent className="pt-5 pb-4">
+                {/* Header row */}
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+                    <BookOpen className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {idx === 0 && completedCount === 0 && (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 bg-primary/10 text-primary border-0">Start here</Badge>
+                    )}
+                    <Badge variant="secondary" className={`text-[10px] capitalize ${diffColor(lesson.difficulty)}`}>
+                      {lesson.difficulty}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Title + description */}
+                <h3 className="font-semibold text-sm leading-snug mb-1 line-clamp-2 group-hover:text-primary transition-colors">
+                  {lesson.title}
+                </h3>
+                <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+                  {lesson.description}
+                </p>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {lesson.duration ?? "?"}min
+                    </span>
+                    <span className="capitalize truncate max-w-[80px]">{lesson.category}</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -313,6 +459,8 @@ export default function DashboardPage() {
       <div className="container mx-auto px-4 py-8">
 
         <WelcomeHero />
+
+        <LessonRecommendations />
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
