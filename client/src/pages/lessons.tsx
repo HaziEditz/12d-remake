@@ -30,7 +30,8 @@ import {
   Brain,
   Briefcase,
   Newspaper,
-  Zap
+  Zap,
+  GitFork,
 } from "lucide-react";
 import type { Lesson, LessonProgress } from "@shared/schema";
 import { useAuth } from "@/lib/auth-context";
@@ -43,6 +44,237 @@ import { LuckyBonusCard } from "@/components/lucky-bonus-card";
 import { LearningStatsCard } from "@/components/learning-stats-card";
 import { AssignmentsPanel } from "@/components/assignments-panel";
 
+// ─── Prerequisite path map ───────────────────────────────────────────────────
+
+const NODE_W = 210;
+const NODE_H = 72;
+const COL_GAP = 88;
+const ROW_GAP = 14;
+
+function wrapTitle(text: string): [string, string] {
+  const max = 22;
+  if (text.length <= max) return [text, ""];
+  const idx = text.lastIndexOf(" ", max);
+  if (idx === -1) return [text.slice(0, max) + "…", ""];
+  const rest = text.slice(idx + 1);
+  return [text.slice(0, idx), rest.length > max ? rest.slice(0, max) + "…" : rest];
+}
+
+function LessonPathMap({
+  lessons,
+  completedLessonIds,
+  isLockedFn,
+  isPrereqLockedFn,
+  navigate,
+}: {
+  lessons: Lesson[];
+  completedLessonIds: Set<string>;
+  isLockedFn: (l: Lesson) => boolean;
+  isPrereqLockedFn: (l: Lesson) => boolean;
+  navigate: (path: string) => void;
+}) {
+  const PADDING = 24;
+
+  // Build maps
+  const prereqMap = new Map<string, string[]>();
+  const dependentMap = new Map<string, string[]>();
+  for (const l of lessons) {
+    const prereqs = (l.prerequisites as string[] | null) ?? [];
+    prereqMap.set(l.id, prereqs);
+    if (!dependentMap.has(l.id)) dependentMap.set(l.id, []);
+    for (const pid of prereqs) {
+      if (!dependentMap.has(pid)) dependentMap.set(pid, []);
+      dependentMap.get(pid)!.push(l.id);
+    }
+  }
+
+  // Assign layers (max-depth topological)
+  const layerOf = new Map<string, number>();
+  const getLayer = (id: string, visited = new Set<string>()): number => {
+    if (layerOf.has(id)) return layerOf.get(id)!;
+    if (visited.has(id)) return 0;
+    visited.add(id);
+    const prereqs = prereqMap.get(id) ?? [];
+    const layer = prereqs.length === 0 ? 0 : Math.max(...prereqs.map(pid => getLayer(pid, new Set(visited)))) + 1;
+    layerOf.set(id, layer);
+    return layer;
+  };
+  for (const l of lessons) getLayer(l.id);
+
+  // Group by layer, sort by order
+  const layerGroups = new Map<number, Lesson[]>();
+  for (const l of lessons) {
+    const layer = layerOf.get(l.id) ?? 0;
+    if (!layerGroups.has(layer)) layerGroups.set(layer, []);
+    layerGroups.get(layer)!.push(l);
+  }
+  for (const [, g] of layerGroups) g.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+  // Assign positions
+  const posMap = new Map<string, { x: number; y: number }>();
+  const maxLayer = layerGroups.size > 0 ? Math.max(...layerOf.values()) : 0;
+  for (let col = 0; col <= maxLayer; col++) {
+    const group = layerGroups.get(col) ?? [];
+    for (let row = 0; row < group.length; row++) {
+      posMap.set(group[row].id, {
+        x: PADDING + col * (NODE_W + COL_GAP),
+        y: PADDING + row * (NODE_H + ROW_GAP),
+      });
+    }
+  }
+
+  const maxRowCount = Math.max(...Array.from(layerGroups.values()).map(g => g.length), 1);
+  const canvasW = PADDING * 2 + (maxLayer + 1) * NODE_W + maxLayer * COL_GAP;
+  const canvasH = PADDING * 2 + maxRowCount * (NODE_H + ROW_GAP);
+  const hasEdges = lessons.some(l => ((l.prerequisites as string[] | null) ?? []).length > 0);
+
+  return (
+    <div className="rounded-xl border bg-card overflow-hidden">
+      {/* Legend */}
+      <div className="px-4 py-2.5 border-b bg-muted/30 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">Learning Path</span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded-sm border-2 border-emerald-500 bg-emerald-500/20" />
+          Completed
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded-sm border-2 border-blue-500 bg-blue-500/15" />
+          Available
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded-sm border-2 border-amber-500 bg-amber-500/15" />
+          Needs prerequisites
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded-sm border-2 border-slate-500/50 bg-slate-500/10" />
+          Paywall locked
+        </span>
+        <span className="ml-auto italic">Click any lesson to open it</span>
+      </div>
+
+      {!hasEdges && (
+        <div className="px-6 py-3 text-xs text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20 border-b border-amber-200/40 dark:border-amber-800/40 flex items-center gap-2">
+          <GitFork className="h-3.5 w-3.5 shrink-0" />
+          No prerequisites set yet — add them in Admin → Lessons to see the dependency tree.
+        </div>
+      )}
+
+      {/* SVG map */}
+      <div className="overflow-auto">
+        <svg
+          width={Math.max(canvasW, 320)}
+          height={Math.max(canvasH, 200)}
+          className="select-none block"
+          style={{ minWidth: Math.max(canvasW, 320) }}
+        >
+          <defs>
+            <marker id="pm-arrow" markerWidth={9} markerHeight={9} refX={7} refY={3} orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#64748b" fillOpacity={0.7} />
+            </marker>
+          </defs>
+
+          {/* Edges */}
+          {lessons.flatMap(lesson => {
+            const to = posMap.get(lesson.id);
+            if (!to) return [];
+            return (prereqMap.get(lesson.id) ?? []).map(pid => {
+              const from = posMap.get(pid);
+              if (!from) return null;
+              const x1 = from.x + NODE_W, y1 = from.y + NODE_H / 2;
+              const x2 = to.x, y2 = to.y + NODE_H / 2;
+              const mx = (x1 + x2) / 2;
+              return (
+                <path
+                  key={`${pid}→${lesson.id}`}
+                  d={`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`}
+                  fill="none"
+                  stroke="#64748b"
+                  strokeWidth={1.5}
+                  strokeDasharray="5 3"
+                  markerEnd="url(#pm-arrow)"
+                  opacity={0.65}
+                />
+              );
+            }).filter(Boolean);
+          })}
+
+          {/* Nodes */}
+          {lessons.map(lesson => {
+            const pos = posMap.get(lesson.id);
+            if (!pos) return null;
+            const completed = completedLessonIds.has(lesson.id);
+            const locked = isLockedFn(lesson);
+            const prereqLocked = isPrereqLockedFn(lesson);
+
+            let stroke = "#3b82f6";
+            let fill = "#3b82f6";
+            let fillOpacity = 0.13;
+            let textFill = "#cbd5e1";
+            let metaFill = "#64748b";
+            if (completed) { stroke = "#22c55e"; fill = "#22c55e"; fillOpacity = 0.16; }
+            else if (prereqLocked) { stroke = "#f59e0b"; fill = "#f59e0b"; fillOpacity = 0.1; }
+            else if (locked) { stroke = "#64748b"; fill = "#64748b"; fillOpacity = 0.08; textFill = "#94a3b8"; }
+
+            const [line1, line2] = wrapTitle(lesson.title);
+            const titleY = line2 ? 22 : 30;
+
+            return (
+              <g
+                key={lesson.id}
+                transform={`translate(${pos.x},${pos.y})`}
+                onClick={() => navigate(`/lessons/${lesson.id}`)}
+                style={{ cursor: "pointer" }}
+                data-testid={`map-node-${lesson.id}`}
+              >
+                {/* Drop shadow */}
+                <rect x={2} y={3} width={NODE_W} height={NODE_H} rx={10} fill="black" opacity={0.18} />
+                {/* Card body */}
+                <rect x={0} y={0} width={NODE_W} height={NODE_H} rx={10}
+                  fill={fill} fillOpacity={fillOpacity}
+                  stroke={stroke} strokeWidth={completed ? 2.5 : 1.8}
+                />
+                {/* Hover highlight (CSS hover on SVG group) */}
+                <rect x={0} y={0} width={NODE_W} height={NODE_H} rx={10}
+                  fill="white" fillOpacity={0} stroke="none"
+                  className="transition-all group-hover:fill-opacity-5"
+                />
+                {/* Title */}
+                <text x={12} y={titleY} fontSize={12.5} fontWeight={600} fill={textFill} fontFamily="inherit">
+                  {line1}
+                </text>
+                {line2 && (
+                  <text x={12} y={titleY + 16} fontSize={12.5} fontWeight={600} fill={textFill} fontFamily="inherit">
+                    {line2}
+                  </text>
+                )}
+                {/* Meta row */}
+                <text x={12} y={NODE_H - 11} fontSize={10} fill={metaFill} fontFamily="inherit" textAnchor="start">
+                  {lesson.difficulty} · {lesson.duration ?? "?"}min · {lesson.category}
+                </text>
+                {/* Status badge */}
+                {completed && (
+                  <>
+                    <circle cx={NODE_W - 14} cy={14} r={8} fill="#22c55e" opacity={0.95} />
+                    <text x={NODE_W - 14} y={18.5} fontSize={10} textAnchor="middle" fill="white" fontWeight={700} fontFamily="inherit">✓</text>
+                  </>
+                )}
+                {prereqLocked && !completed && (
+                  <circle cx={NODE_W - 14} cy={14} r={8} fill="#f59e0b" opacity={0.9} />
+                )}
+                {locked && (
+                  <circle cx={NODE_W - 14} cy={14} r={8} fill="#64748b" opacity={0.7} />
+                )}
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function LessonsPage() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
@@ -50,6 +282,7 @@ export default function LessonsPage() {
   const [filterDifficulty, setFilterDifficulty] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("default");
+  const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
 
   const { data: lessons, isLoading: lessonsLoading } = useQuery<Lesson[]>({
     queryKey: ["/api/lessons"],
@@ -214,20 +447,45 @@ export default function LessonsPage() {
             Master trading through our comprehensive curriculum
           </p>
         </div>
-        <Button 
-          variant={showFilter ? "default" : "outline"} 
-          className="gap-2"
-          onClick={() => setShowFilter(!showFilter)}
-          data-testid="button-filter-lessons"
-        >
-          <Filter className="h-4 w-4" />
-          Filter
-          {(filterDifficulty !== "all" || filterCategory !== "all") && (
-            <Badge className="ml-1 h-4 w-4 p-0 flex items-center justify-center text-[10px]">
-              {[filterDifficulty !== "all", filterCategory !== "all"].filter(Boolean).length}
-            </Badge>
-          )}
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* View mode toggle */}
+          <div className="flex rounded-lg border overflow-hidden">
+            <Button
+              variant={viewMode === "grid" ? "default" : "ghost"}
+              size="sm"
+              className="gap-1.5 rounded-none border-0 h-9 px-3"
+              onClick={() => setViewMode("grid")}
+              data-testid="button-view-grid"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Grid</span>
+            </Button>
+            <Button
+              variant={viewMode === "map" ? "default" : "ghost"}
+              size="sm"
+              className="gap-1.5 rounded-none border-0 border-l h-9 px-3"
+              onClick={() => setViewMode("map")}
+              data-testid="button-view-map"
+            >
+              <GitFork className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Path Map</span>
+            </Button>
+          </div>
+          <Button 
+            variant={showFilter ? "default" : "outline"} 
+            className="gap-2"
+            onClick={() => setShowFilter(!showFilter)}
+            data-testid="button-filter-lessons"
+          >
+            <Filter className="h-4 w-4" />
+            Filter
+            {(filterDifficulty !== "all" || filterCategory !== "all") && (
+              <Badge className="ml-1 h-4 w-4 p-0 flex items-center justify-center text-[10px]">
+                {[filterDifficulty !== "all", filterCategory !== "all"].filter(Boolean).length}
+              </Badge>
+            )}
+          </Button>
+        </div>
       </div>
 
       {showFilter && (
@@ -389,7 +647,19 @@ export default function LessonsPage() {
         </Card>
       )}
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {viewMode === "map" && (
+        <div className="mb-6">
+          <LessonPathMap
+            lessons={lessons ?? []}
+            completedLessonIds={completedLessonIds}
+            isLockedFn={isLessonLocked}
+            isPrereqLockedFn={isPrerequisiteLocked}
+            navigate={navigate}
+          />
+        </div>
+      )}
+
+      {viewMode === "grid" && <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredAndSortedLessons.map((lesson) => {
           const isCompleted = completedLessonIds.has(lesson.id);
           const isLocked = isLessonLocked(lesson);
@@ -480,9 +750,9 @@ export default function LessonsPage() {
             </Card>
           );
         })}
-      </div>
+      </div>}
 
-      {(!lessons || lessons.length === 0) && (
+      {viewMode === "grid" && (!lessons || lessons.length === 0) && (
         <Card className="text-center py-12">
           <CardContent>
             <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
