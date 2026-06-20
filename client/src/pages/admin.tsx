@@ -71,6 +71,7 @@ const lessonSchema = z.object({
   duration: z.coerce.number().positive("Duration must be positive"),
   order: z.coerce.number().min(0),
   isPublished: z.boolean().default(true),
+  requiresSimulation: z.boolean().default(false),
 });
 
 const tipSchema = z.object({
@@ -316,7 +317,7 @@ export default function AdminPage() {
 
   const lessonForm = useForm<LessonFormData>({
     resolver: zodResolver(lessonSchema),
-    defaultValues: { title: "", description: "", content: "", category: "basics", difficulty: "beginner", duration: 10, order: 0, isPublished: true },
+    defaultValues: { title: "", description: "", content: "", category: "basics", difficulty: "beginner", duration: 10, order: 0, isPublished: true, requiresSimulation: false },
   });
   const tipForm = useForm<TipFormData>({
     resolver: zodResolver(tipSchema),
@@ -332,14 +333,22 @@ export default function AdminPage() {
   });
 
   const createLessonMutation = useMutation({
-    mutationFn: (data: LessonFormData) => apiRequest("POST", "/api/admin/lessons", data),
-    onSuccess: () => {
+    mutationFn: async (data: LessonFormData) => {
+      const res = await apiRequest("POST", "/api/admin/lessons", data);
+      return res.json();
+    },
+    onSuccess: (newLesson: Lesson) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/lessons"] });
       queryClient.invalidateQueries({ queryKey: ["/api/lessons"] });
-      toast({ title: "Lesson created" });
+      toast({ title: "Lesson created — you can now add a quiz below" });
       setIsCreatingLesson(false);
-      setSelectedLesson(null);
-      lessonForm.reset();
+      setSelectedLesson(newLesson);
+      lessonForm.reset({
+        title: newLesson.title, description: newLesson.description, content: newLesson.content,
+        category: newLesson.category, difficulty: newLesson.difficulty, duration: newLesson.duration,
+        order: newLesson.order, isPublished: newLesson.isPublished ?? true,
+        requiresSimulation: newLesson.requiresSimulation ?? false,
+      });
     },
     onError: () => toast({ title: "Failed to create lesson", variant: "destructive" }),
   });
@@ -470,6 +479,7 @@ export default function AdminPage() {
       title: lesson.title, description: lesson.description, content: lesson.content,
       category: lesson.category, difficulty: lesson.difficulty, duration: lesson.duration,
       order: lesson.order, isPublished: lesson.isPublished ?? true,
+      requiresSimulation: lesson.requiresSimulation ?? false,
     });
   };
   const handleSelectTip = (tip: TradingTip) => {
@@ -491,7 +501,7 @@ export default function AdminPage() {
   const handleCreateNewLesson = () => {
     setSelectedLesson(null);
     setIsCreatingLesson(true);
-    lessonForm.reset({ title: "", description: "", content: "", category: "basics", difficulty: "beginner", duration: 10, order: lessons?.length ?? 0, isPublished: true });
+    lessonForm.reset({ title: "", description: "", content: "", category: "basics", difficulty: "beginner", duration: 10, order: lessons?.length ?? 0, isPublished: true, requiresSimulation: false });
   };
   const handleCreateNewTip = () => {
     setSelectedTip(null);
@@ -757,6 +767,18 @@ export default function AdminPage() {
                           <p className="text-xs text-muted-foreground mt-0.5">Visible to students on the platform</p>
                         </div>
                         <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                      </FormItem>
+                    )} />
+                    <FormField control={lessonForm.control} name="requiresSimulation" render={({ field }) => (
+                      <FormItem className="flex items-center justify-between p-4 border rounded-lg bg-blue-50/40 dark:bg-blue-950/20 border-blue-200/50 dark:border-blue-800/50">
+                        <div>
+                          <FormLabel className="text-sm font-medium flex items-center gap-2">
+                            <BarChart3 className="h-4 w-4 text-blue-500" />
+                            Requires Simulator Practice
+                          </FormLabel>
+                          <p className="text-xs text-muted-foreground mt-0.5">Students will see a prompt to practice in the simulator before completing this lesson</p>
+                        </div>
+                        <FormControl><Switch checked={field.value ?? false} onCheckedChange={field.onChange} /></FormControl>
                       </FormItem>
                     )} />
                     {selectedLesson && !isCreatingLesson && <QuizEditor lessonId={selectedLesson.id} />}

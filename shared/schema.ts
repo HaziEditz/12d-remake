@@ -60,6 +60,7 @@ export const lessons = pgTable("lessons", {
   duration: integer("duration").notNull(),
   order: integer("order").notNull(),
   isPublished: boolean("is_published").default(true),
+  requiresSimulation: boolean("requires_simulation").default(false),
 });
 
 export const lessonProgress = pgTable("lesson_progress", {

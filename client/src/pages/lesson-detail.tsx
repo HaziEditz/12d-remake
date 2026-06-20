@@ -13,6 +13,7 @@ import {
   BookOpen,
   ChevronRight,
   ChevronLeft,
+  BarChart3,
 } from "lucide-react";
 import type { Lesson, LessonProgress, Quiz, QuizAttempt } from "@shared/schema";
 import { useAuth } from "@/lib/auth-context";
@@ -197,6 +198,22 @@ export default function LessonDetailPage() {
             )}
           </CardContent>
         </Card>
+
+        {lesson.requiresSimulation && (
+          <div className="mb-6 p-4 rounded-xl border border-blue-200/60 dark:border-blue-800/60 bg-blue-50/50 dark:bg-blue-950/20 flex items-start gap-3">
+            <div className="h-9 w-9 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0 mt-0.5">
+              <BarChart3 className="h-4.5 w-4.5 text-blue-500" />
+            </div>
+            <div>
+              <p className="font-semibold text-sm text-blue-700 dark:text-blue-400">Simulator Practice Recommended</p>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                This lesson is enhanced by hands-on practice. Try placing a few trades in the{" "}
+                <a href="/simulator" className="font-medium text-blue-600 dark:text-blue-400 hover:underline">Simulator</a>{" "}
+                before marking it complete to reinforce what you've learned.
+              </p>
+            </div>
+          </div>
+        )}
 
         <EnhancedQuizSection
           lessonId={lesson.id}
