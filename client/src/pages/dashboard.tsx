@@ -57,6 +57,220 @@ const portfolioItemSchema = z.object({
 
 type PortfolioFormData = z.infer<typeof portfolioItemSchema>;
 
+// ─── Learning Activity Heatmap ───────────────────────────────────────────────
+
+const WEEKS = 15;
+const DAYS = 7;
+
+function toDateKey(d: Date) {
+  return d.toISOString().slice(0, 10); // "YYYY-MM-DD"
+}
+
+function LearningActivity() {
+  const { user } = useAuth();
+  const { data: progress } = useQuery<LessonProgress[]>({
+    queryKey: ["/api/lessons/progress"],
+    enabled: !!user,
+  });
+
+  if (!user) return null;
+
+  // Build date → count map from completedAt timestamps
+  const countByDay = new Map<string, number>();
+  for (const p of progress ?? []) {
+    if (!p.completed || !p.completedAt) continue;
+    const key = toDateKey(new Date(p.completedAt));
+    countByDay.set(key, (countByDay.get(key) ?? 0) + 1);
+  }
+
+  // Build grid: WEEKS columns × 7 rows, newest column on the right
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Align to the start of the current week (Sunday)
+  const startOfGrid = new Date(today);
+  startOfGrid.setDate(today.getDate() - (today.getDay()) - (WEEKS - 1) * 7);
+
+  const cells: { date: Date; key: string; count: number }[][] = [];
+  for (let w = 0; w < WEEKS; w++) {
+    const col: { date: Date; key: string; count: number }[] = [];
+    for (let d = 0; d < DAYS; d++) {
+      const date = new Date(startOfGrid);
+      date.setDate(startOfGrid.getDate() + w * 7 + d);
+      const key = toDateKey(date);
+      col.push({ date, key, count: countByDay.get(key) ?? 0 });
+    }
+    cells.push(col);
+  }
+
+  // Month labels: find the first cell of each month and label it
+  const monthLabels: { col: number; label: string }[] = [];
+  let lastMonth = -1;
+  cells.forEach((col, wi) => {
+    const m = col[0].date.getMonth();
+    if (m !== lastMonth) {
+      monthLabels.push({ col: wi, label: col[0].date.toLocaleString("default", { month: "short" }) });
+      lastMonth = m;
+    }
+  });
+
+  // Weekly bar data (last 8 weeks)
+  const weeklyBars = cells.slice(-8).map((col, i) => ({
+    label: i === 7 ? "This wk" : `${(7 - i)}w ago`,
+    total: col.reduce((s, c) => s + c.count, 0),
+  }));
+  const maxBar = Math.max(...weeklyBars.map(b => b.total), 1);
+
+  // Summary stats
+  const totalCompleted = countByDay.size > 0 ? [...countByDay.values()].reduce((a, b) => a + b, 0) : 0;
+  const streak = (user as any).lessonStreak ?? 0;
+  const activeDaysLast30 = [...countByDay.entries()]
+    .filter(([key]) => {
+      const d = new Date(key);
+      const diff = (today.getTime() - d.getTime()) / 86400000;
+      return diff <= 30;
+    }).length;
+
+  const cellColor = (count: number, isFuture: boolean) => {
+    if (isFuture) return "bg-muted/30";
+    if (count === 0) return "bg-muted/60 dark:bg-muted/30";
+    if (count === 1) return "bg-primary/30 dark:bg-primary/25";
+    if (count === 2) return "bg-primary/55 dark:bg-primary/50";
+    return "bg-primary dark:bg-primary";
+  };
+
+  return (
+    <div className="mb-8">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Activity className="h-5 w-5 text-primary" />
+            Learning Activity
+          </h2>
+          <p className="text-sm text-muted-foreground">Your lesson completion history</p>
+        </div>
+        {/* Summary pills */}
+        <div className="flex items-center gap-3">
+          {streak > 0 && (
+            <div className="flex items-center gap-1.5 text-sm font-medium text-amber-600 dark:text-amber-400">
+              <Flame className="h-4 w-4" />
+              {streak}-day streak
+            </div>
+          )}
+          <div className="text-sm text-muted-foreground hidden sm:block">
+            <span className="font-semibold text-foreground">{activeDaysLast30}</span> active days (30d)
+          </div>
+        </div>
+      </div>
+
+      <Card>
+        <CardContent className="pt-5 pb-5">
+          {/* Heatmap */}
+          <div className="overflow-x-auto">
+            <div style={{ minWidth: WEEKS * 18 }}>
+              {/* Month labels */}
+              <div className="flex mb-1" style={{ gap: 3 }}>
+                <div style={{ width: 22 }} />
+                {cells.map((col, wi) => {
+                  const label = monthLabels.find(m => m.col === wi);
+                  return (
+                    <div key={wi} style={{ width: 14, minWidth: 14, fontSize: 9, color: "var(--muted-foreground)", whiteSpace: "nowrap" }}>
+                      {label ? label.label : ""}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Day rows */}
+              {[0, 1, 2, 3, 4, 5, 6].map(dayIdx => (
+                <div key={dayIdx} className="flex items-center" style={{ gap: 3, marginBottom: 3 }}>
+                  {/* Day label (Mon/Wed/Fri only) */}
+                  <div style={{ width: 22, fontSize: 9, color: "var(--muted-foreground)", textAlign: "right", paddingRight: 4 }}>
+                    {dayIdx === 1 ? "Mon" : dayIdx === 3 ? "Wed" : dayIdx === 5 ? "Fri" : ""}
+                  </div>
+                  {cells.map((col, wi) => {
+                    const cell = col[dayIdx];
+                    const isFuture = cell.date > today;
+                    const isToday = cell.key === toDateKey(today);
+                    return (
+                      <div
+                        key={wi}
+                        title={`${cell.date.toLocaleDateString("default", { month: "short", day: "numeric" })}: ${cell.count} lesson${cell.count !== 1 ? "s" : ""}`}
+                        className={`rounded-sm transition-colors ${cellColor(cell.count, isFuture)} ${isToday ? "ring-1 ring-primary ring-offset-1 ring-offset-card" : ""}`}
+                        style={{ width: 14, height: 14, minWidth: 14, cursor: "default" }}
+                        data-testid={isToday ? "heatmap-today" : undefined}
+                      />
+                    );
+                  })}
+                </div>
+              ))}
+
+              {/* Colour legend */}
+              <div className="flex items-center gap-1.5 mt-3 justify-end">
+                <span style={{ fontSize: 10, color: "var(--muted-foreground)" }}>Less</span>
+                {[0, 1, 2, 3].map(n => (
+                  <div key={n} className={`rounded-sm ${cellColor(n, false)}`} style={{ width: 12, height: 12 }} />
+                ))}
+                <span style={{ fontSize: 10, color: "var(--muted-foreground)" }}>More</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="border-t my-5" />
+
+          {/* Weekly bars + stats */}
+          <div className="grid md:grid-cols-2 gap-6 items-end">
+            {/* Bar chart — last 8 weeks */}
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Weekly completions</p>
+              <div className="flex items-end gap-1.5 h-16">
+                {weeklyBars.map((bar, i) => (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                    <div
+                      className={`w-full rounded-t-sm transition-all ${i === weeklyBars.length - 1 ? "bg-primary" : "bg-primary/35"}`}
+                      style={{ height: `${Math.round((bar.total / maxBar) * 52) + (bar.total > 0 ? 4 : 0)}px`, minHeight: bar.total > 0 ? 4 : 1 }}
+                    />
+                    {bar.total > 0 && (
+                      <span className="text-[9px] text-muted-foreground font-medium">{bar.total}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-1.5 mt-1">
+                {weeklyBars.map((_, i) => (
+                  <div key={i} className="flex-1 text-center text-[8px] text-muted-foreground/60">
+                    {i === weeklyBars.length - 1 ? "Now" : ""}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Stats grid */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-xl bg-muted/40 p-3 text-center">
+                <p className="text-2xl font-bold text-primary leading-none mb-1">{totalCompleted}</p>
+                <p className="text-[11px] text-muted-foreground">Total lessons</p>
+              </div>
+              <div className="rounded-xl bg-muted/40 p-3 text-center">
+                <p className="text-2xl font-bold leading-none mb-1 flex items-center justify-center gap-0.5">
+                  {streak > 0 ? <span className="text-amber-500">{streak}</span> : <span className="text-muted-foreground">0</span>}
+                  {streak > 0 && <Flame className="h-4 w-4 text-amber-500" />}
+                </p>
+                <p className="text-[11px] text-muted-foreground">Day streak</p>
+              </div>
+              <div className="rounded-xl bg-muted/40 p-3 text-center">
+                <p className="text-2xl font-bold leading-none mb-1">{activeDaysLast30}</p>
+                <p className="text-[11px] text-muted-foreground">Active days</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ─── Lesson Recommendations ──────────────────────────────────────────────────
 
 function LessonRecommendations() {
@@ -459,6 +673,8 @@ export default function DashboardPage() {
       <div className="container mx-auto px-4 py-8">
 
         <WelcomeHero />
+
+        <LearningActivity />
 
         <LessonRecommendations />
 
