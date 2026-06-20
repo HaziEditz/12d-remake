@@ -166,6 +166,13 @@ export default function LessonsPage() {
     return difficulty === "intermediate" || difficulty === "advanced";
   };
 
+  const isPrerequisiteLocked = (lesson: Lesson) => {
+    if (!user) return false;
+    const prereqs = (lesson.prerequisites as string[] | null) ?? [];
+    if (prereqs.length === 0) return false;
+    return prereqs.some(pid => !completedLessonIds.has(pid));
+  };
+
   const availableLessons = lessons?.filter(l => !isLessonLocked(l)) ?? [];
   const lockedLessons = lessons?.filter(l => isLessonLocked(l)) ?? [];
   
@@ -386,16 +393,18 @@ export default function LessonsPage() {
         {filteredAndSortedLessons.map((lesson) => {
           const isCompleted = completedLessonIds.has(lesson.id);
           const isLocked = isLessonLocked(lesson);
+          const isPrereqLocked = !isLocked && isPrerequisiteLocked(lesson);
+          const prereqCount = ((lesson.prerequisites as string[] | null) ?? []).length;
           return (
             <Card 
               key={lesson.id} 
-              className={`${isCompleted ? "opacity-75" : ""} ${isLocked ? "opacity-60" : ""}`}
+              className={`transition-all ${isCompleted ? "opacity-75" : ""} ${isLocked ? "opacity-60" : ""} ${isPrereqLocked ? "border-amber-300/40 dark:border-amber-700/40" : ""}`}
               data-testid={`card-lesson-${lesson.id}`}
             >
               <CardHeader>
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <Badge 
                         variant="secondary" 
                         className={`capitalize ${getDifficultyColor(lesson.difficulty)}`}
@@ -405,7 +414,13 @@ export default function LessonsPage() {
                       {isLocked && (
                         <Lock className="h-4 w-4 text-amber-500" />
                       )}
-                      {isCompleted && !isLocked && (
+                      {isPrereqLocked && (
+                        <Badge variant="outline" className="text-[10px] h-5 px-1.5 gap-1 border-amber-400/50 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30">
+                          <Lock className="h-2.5 w-2.5" />
+                          {prereqCount} prereq{prereqCount !== 1 ? "s" : ""}
+                        </Badge>
+                      )}
+                      {isCompleted && !isLocked && !isPrereqLocked && (
                         <CheckCircle2 className="h-5 w-5 text-success" />
                       )}
                     </div>
@@ -439,6 +454,17 @@ export default function LessonsPage() {
                         Unlock
                       </Button>
                     </Link>
+                  ) : isPrereqLocked ? (
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      className="gap-1 border-amber-400/40 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                      data-testid={`button-prereq-lesson-${lesson.id}`}
+                      onClick={() => navigate(`/lessons/${lesson.id}`)}
+                    >
+                      <Lock className="h-3 w-3" />
+                      View
+                    </Button>
                   ) : (
                     <Button 
                       variant={isCompleted ? "outline" : "default"} 

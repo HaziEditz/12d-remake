@@ -49,6 +49,7 @@ import {
   CheckCircle2,
   XCircle,
   MoreHorizontal,
+  Lock,
 } from "lucide-react";
 import {
   BarChart,
@@ -72,6 +73,7 @@ const lessonSchema = z.object({
   order: z.coerce.number().min(0),
   isPublished: z.boolean().default(true),
   requiresSimulation: z.boolean().default(false),
+  prerequisites: z.array(z.string()).default([]),
 });
 
 const tipSchema = z.object({
@@ -317,7 +319,7 @@ export default function AdminPage() {
 
   const lessonForm = useForm<LessonFormData>({
     resolver: zodResolver(lessonSchema),
-    defaultValues: { title: "", description: "", content: "", category: "basics", difficulty: "beginner", duration: 10, order: 0, isPublished: true, requiresSimulation: false },
+    defaultValues: { title: "", description: "", content: "", category: "basics", difficulty: "beginner", duration: 10, order: 0, isPublished: true, requiresSimulation: false, prerequisites: [] },
   });
   const tipForm = useForm<TipFormData>({
     resolver: zodResolver(tipSchema),
@@ -348,6 +350,7 @@ export default function AdminPage() {
         category: newLesson.category, difficulty: newLesson.difficulty, duration: newLesson.duration,
         order: newLesson.order, isPublished: newLesson.isPublished ?? true,
         requiresSimulation: newLesson.requiresSimulation ?? false,
+        prerequisites: (newLesson.prerequisites as string[]) ?? [],
       });
     },
     onError: () => toast({ title: "Failed to create lesson", variant: "destructive" }),
@@ -480,6 +483,7 @@ export default function AdminPage() {
       category: lesson.category, difficulty: lesson.difficulty, duration: lesson.duration,
       order: lesson.order, isPublished: lesson.isPublished ?? true,
       requiresSimulation: lesson.requiresSimulation ?? false,
+      prerequisites: (lesson.prerequisites as string[]) ?? [],
     });
   };
   const handleSelectTip = (tip: TradingTip) => {
@@ -501,7 +505,7 @@ export default function AdminPage() {
   const handleCreateNewLesson = () => {
     setSelectedLesson(null);
     setIsCreatingLesson(true);
-    lessonForm.reset({ title: "", description: "", content: "", category: "basics", difficulty: "beginner", duration: 10, order: lessons?.length ?? 0, isPublished: true, requiresSimulation: false });
+    lessonForm.reset({ title: "", description: "", content: "", category: "basics", difficulty: "beginner", duration: 10, order: lessons?.length ?? 0, isPublished: true, requiresSimulation: false, prerequisites: [] });
   };
   const handleCreateNewTip = () => {
     setSelectedTip(null);
@@ -781,6 +785,56 @@ export default function AdminPage() {
                         <FormControl><Switch checked={field.value ?? false} onCheckedChange={field.onChange} /></FormControl>
                       </FormItem>
                     )} />
+
+                    {/* Prerequisites section */}
+                    <FormField control={lessonForm.control} name="prerequisites" render={({ field }) => {
+                      const otherLessons = (lessons ?? []).filter(l => l.id !== selectedLesson?.id);
+                      const selected: string[] = field.value ?? [];
+                      const toggle = (id: string) => {
+                        field.onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]);
+                      };
+                      return (
+                        <FormItem>
+                          <div className="border rounded-lg overflow-hidden">
+                            <div className="flex items-center justify-between px-4 py-3 bg-muted/40 border-b">
+                              <div>
+                                <FormLabel className="text-sm font-medium flex items-center gap-2 mb-0">
+                                  <Lock className="h-4 w-4 text-amber-500" />
+                                  Prerequisites
+                                </FormLabel>
+                                <p className="text-xs text-muted-foreground mt-0.5">Students must complete these lessons before starting this one</p>
+                              </div>
+                              {selected.length > 0 && (
+                                <Badge variant="secondary" className="text-xs">{selected.length} required</Badge>
+                              )}
+                            </div>
+                            {otherLessons.length === 0 ? (
+                              <div className="px-4 py-6 text-center text-sm text-muted-foreground">No other lessons available</div>
+                            ) : (
+                              <div className="max-h-48 overflow-y-auto divide-y divide-border/50">
+                                {otherLessons.sort((a, b) => a.order - b.order).map(l => (
+                                  <label key={l.id} className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-muted/30 transition-colors">
+                                    <input
+                                      type="checkbox"
+                                      checked={selected.includes(l.id)}
+                                      onChange={() => toggle(l.id)}
+                                      className="h-4 w-4 rounded accent-primary"
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium truncate">{l.title}</p>
+                                      <p className="text-xs text-muted-foreground capitalize">{l.difficulty} · {l.category}</p>
+                                    </div>
+                                    {selected.includes(l.id) && <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />}
+                                  </label>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }} />
+
                     {selectedLesson && !isCreatingLesson && <QuizEditor lessonId={selectedLesson.id} />}
                   </form>
                 </Form>
