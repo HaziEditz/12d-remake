@@ -21,7 +21,7 @@ if (paypalReady) {
   capturePaypalOrder = unavailable;
   loadPaypalDefault = unavailable;
 }
-import { insertUserSchema, insertLessonSchema, insertTradeSchema, insertPortfolioItemSchema, insertAssignmentSchema, insertClassSchema, insertChatMessageSchema, updateProfileSchema } from "@shared/schema";
+import { insertUserSchema, insertLessonSchema, insertTradeSchema, insertPortfolioItemSchema, insertAssignmentSchema, insertClassSchema, insertChatMessageSchema, updateProfileSchema, insertLessonNoteSchema } from "@shared/schema";
 import type { User, Trade } from "@shared/schema";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { setupWebSocket } from "./websocket";
@@ -607,6 +607,52 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       } catch {}
     }
     res.json({ success: true });
+  });
+
+  // Lesson Notes
+  app.get("/api/lessons/:id/notes", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const notes = await storage.getLessonNotes(user.id, req.params.id);
+      res.json(notes);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/lessons/:id/notes", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { content } = req.body;
+      if (!content?.trim()) return res.status(400).json({ message: "Note content is required" });
+      const note = await storage.createLessonNote(user.id, req.params.id, content.trim());
+      res.json(note);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.put("/api/lessons/:lessonId/notes/:noteId", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { content } = req.body;
+      if (!content?.trim()) return res.status(400).json({ message: "Note content is required" });
+      const note = await storage.updateLessonNote(user.id, req.params.noteId, content.trim());
+      if (!note) return res.status(404).json({ message: "Note not found" });
+      res.json(note);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/lessons/:lessonId/notes/:noteId", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      await storage.deleteLessonNote(user.id, req.params.noteId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
   });
 
   app.post("/api/lessons/:id/complete", requireAuth, async (req, res) => {

@@ -380,6 +380,19 @@ export const classDirectMessages = pgTable("class_direct_messages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const lessonNotes = pgTable("lesson_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  lessonId: varchar("lesson_id").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertLessonNoteSchema = createInsertSchema(lessonNotes).omit({ id: true, createdAt: true, updatedAt: true });
+export type LessonNote = typeof lessonNotes.$inferSelect;
+export type InsertLessonNote = z.infer<typeof insertLessonNoteSchema>;
+
 export const session = pgTable("session", {
   sid: varchar("sid").primaryKey(),
   sess: text("sess").notNull(),

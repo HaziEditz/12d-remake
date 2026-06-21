@@ -50,7 +50,8 @@ import {
   type UserInventory, type InsertUserInventory,
   type TradeOffer,
   type PlayerLeagueStat, type Showdown, type HedgeFund, type HedgeFundMember,
-  type LeagueSeason, type ChallengeCompletion
+  type LeagueSeason, type ChallengeCompletion,
+  lessonNotes, type LessonNote
 } from "@shared/schema";
 import bcrypt from "bcryptjs";
 
@@ -74,6 +75,12 @@ export interface IStorage {
   // Lesson Progress
   getLessonProgress(userId: string): Promise<LessonProgress[]>;
   updateLessonProgress(userId: string, lessonId: string, completed: boolean): Promise<void>;
+
+  // Lesson Notes
+  getLessonNotes(userId: string, lessonId: string): Promise<LessonNote[]>;
+  createLessonNote(userId: string, lessonId: string, content: string): Promise<LessonNote>;
+  updateLessonNote(userId: string, noteId: string, content: string): Promise<LessonNote | undefined>;
+  deleteLessonNote(userId: string, noteId: string): Promise<void>;
   
   // Trades
   createTrade(data: InsertTrade): Promise<Trade>;
@@ -442,6 +449,31 @@ export class DatabaseStorage implements IStorage {
 
   async deleteLesson(id: string): Promise<void> {
     await db.delete(lessons).where(eq(lessons.id, id));
+  }
+
+  // Lesson Notes
+  async getLessonNotes(userId: string, lessonId: string): Promise<LessonNote[]> {
+    return db.select().from(lessonNotes)
+      .where(and(eq(lessonNotes.userId, userId), eq(lessonNotes.lessonId, lessonId)))
+      .orderBy(desc(lessonNotes.createdAt));
+  }
+
+  async createLessonNote(userId: string, lessonId: string, content: string): Promise<LessonNote> {
+    const [note] = await db.insert(lessonNotes).values({ userId, lessonId, content }).returning();
+    return note;
+  }
+
+  async updateLessonNote(userId: string, noteId: string, content: string): Promise<LessonNote | undefined> {
+    const [note] = await db.update(lessonNotes)
+      .set({ content, updatedAt: new Date() })
+      .where(and(eq(lessonNotes.id, noteId), eq(lessonNotes.userId, userId)))
+      .returning();
+    return note;
+  }
+
+  async deleteLessonNote(userId: string, noteId: string): Promise<void> {
+    await db.delete(lessonNotes)
+      .where(and(eq(lessonNotes.id, noteId), eq(lessonNotes.userId, userId)));
   }
 
   // Lesson Progress
