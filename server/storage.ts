@@ -695,13 +695,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async resetUserBalance(userId: string, amount: number): Promise<void> {
-    // Close all open trades first (they would otherwise continue to credit balance)
+    // Close all open trades first
     await db.update(trades)
       .set({ status: "closed", closedAt: new Date(), exitPrice: 0, profit: 0 })
       .where(and(eq(trades.userId, userId), eq(trades.status, "open")));
     await db.update(trades)
       .set({ status: "cancelled" })
       .where(and(eq(trades.userId, userId), eq(trades.status, "pending")));
+    // Clear portfolio items so account isn't left in a broken state
+    await db.delete(portfolioItems).where(eq(portfolioItems.userId, userId));
     // Reset balance
     await this.updateUser(userId, { simulatorBalance: amount, totalProfit: 0 });
   }
@@ -716,6 +718,8 @@ export class DatabaseStorage implements IStorage {
       await db.update(trades)
         .set({ status: "cancelled" })
         .where(and(eq(trades.userId, u.id), eq(trades.status, "pending")));
+      // Clear portfolio items so accounts aren't left in a broken state
+      await db.delete(portfolioItems).where(eq(portfolioItems.userId, u.id));
     }
     // Reset all non-admin balances
     await db.update(users)
