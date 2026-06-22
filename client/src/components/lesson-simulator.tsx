@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, TrendingDown, DollarSign, Target, CheckCircle2, RefreshCw, Minus, Plus } from "lucide-react";
+import { TrendingUp, TrendingDown, Target, CheckCircle2, Minus, Plus, Radio } from "lucide-react";
 import type { SimulationChallenge } from "@shared/schema";
 
 interface SimulatedPrices {
@@ -28,6 +28,8 @@ interface Props {
   isCompleted?: boolean;
 }
 
+type FlashDir = "up" | "down" | null;
+
 export function LessonSimulator({ challenge, onPassed, isCompleted }: Props) {
   const [balance, setBalance] = useState(challenge.startingBalance);
   const [holdings, setHoldings] = useState<Record<string, Holding>>({});
@@ -35,6 +37,9 @@ export function LessonSimulator({ challenge, onPassed, isCompleted }: Props) {
   const [passed, setPassed] = useState(isCompleted ?? false);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [tab, setTab] = useState<"trade" | "positions">("trade");
+  const [flash, setFlash] = useState<Record<string, FlashDir>>({});
+  const prevPrices = useRef<Record<string, number>>({});
+  const [justUpdated, setJustUpdated] = useState(false);
 
   const { data: pricesData } = useQuery<SimulatedPrices>({
     queryKey: ["/api/simulated-prices"],
@@ -42,6 +47,28 @@ export function LessonSimulator({ challenge, onPassed, isCompleted }: Props) {
   });
 
   const prices = pricesData ?? {};
+
+  // Detect price changes and trigger flash animations
+  useEffect(() => {
+    if (!pricesData) return;
+    const newFlash: Record<string, FlashDir> = {};
+    let anyChange = false;
+    for (const sym of Object.keys(pricesData)) {
+      const prev = prevPrices.current[sym];
+      const curr = pricesData[sym];
+      if (prev !== undefined && prev !== curr) {
+        newFlash[sym] = curr > prev ? "up" : "down";
+        anyChange = true;
+      }
+    }
+    prevPrices.current = { ...pricesData };
+    if (anyChange) {
+      setFlash(newFlash);
+      setJustUpdated(true);
+      const t = setTimeout(() => { setFlash({}); setJustUpdated(false); }, 1400);
+      return () => clearTimeout(t);
+    }
+  }, [pricesData]);
 
   const allowedSymbols = challenge.allowedSymbols?.length > 0
     ? challenge.allowedSymbols
@@ -148,11 +175,18 @@ export function LessonSimulator({ challenge, onPassed, isCompleted }: Props) {
             </p>
           </div>
         </div>
-        {passed && (
-          <Badge className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30 gap-1.5">
-            <CheckCircle2 className="h-3 w-3" /> Passed
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Live indicator */}
+          <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-semibold transition-all duration-300 ${justUpdated ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-500" : "bg-muted/50 border-border text-muted-foreground"}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${justUpdated ? "bg-emerald-500 animate-ping" : "bg-muted-foreground/50 animate-pulse"}`} />
+            LIVE
+          </div>
+          {passed && (
+            <Badge className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30 gap-1.5">
+              <CheckCircle2 className="h-3 w-3" /> Passed
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* Stats bar */}
@@ -210,12 +244,31 @@ export function LessonSimulator({ challenge, onPassed, isCompleted }: Props) {
             const qty = quantities[symbol] || 1;
             const canBuy = price * qty <= balance;
             const hasHolding = !!holdings[symbol];
+            const dir = flash[symbol];
             return (
-              <div key={symbol} className="flex items-center gap-2 p-2.5 rounded-lg border border-border bg-card hover:bg-muted/30 transition-colors">
+              <div
+                key={symbol}
+                className={`flex items-center gap-2 p-2.5 rounded-lg border transition-all duration-300 ${
+                  dir === "up"
+                    ? "border-emerald-500/60 bg-emerald-500/8 shadow-[0_0_8px_rgba(16,185,129,0.15)]"
+                    : dir === "down"
+                    ? "border-red-500/60 bg-red-500/8 shadow-[0_0_8px_rgba(239,68,68,0.15)]"
+                    : "border-border bg-card hover:bg-muted/30"
+                }`}
+              >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-bold">{symbol}</p>
-                    <p className="text-sm font-semibold">${price?.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    <div className="flex items-center gap-1">
+                      {dir && (
+                        dir === "up"
+                          ? <TrendingUp className="h-3 w-3 text-emerald-500" />
+                          : <TrendingDown className="h-3 w-3 text-red-500" />
+                      )}
+                      <p className={`text-sm font-semibold transition-colors duration-300 ${dir === "up" ? "text-emerald-500" : dir === "down" ? "text-red-500" : "text-foreground"}`}>
+                        ${price?.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
                   </div>
                   {hasHolding && (
                     <p className="text-[10px] text-muted-foreground">
@@ -262,14 +315,15 @@ export function LessonSimulator({ challenge, onPassed, isCompleted }: Props) {
                 const currentValue = price * h.quantity;
                 const costBasis = h.avgCost * h.quantity;
                 const pnl = currentValue - costBasis;
+                const dir = flash[symbol];
                 return (
-                  <div key={symbol} className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-card">
+                  <div key={symbol} className={`flex items-center justify-between p-2.5 rounded-lg border transition-all duration-300 ${dir === "up" ? "border-emerald-500/50 bg-emerald-500/5" : dir === "down" ? "border-red-500/50 bg-red-500/5" : "border-border bg-card"}`}>
                     <div>
                       <p className="text-sm font-bold">{symbol}</p>
                       <p className="text-xs text-muted-foreground">{h.quantity} shares · avg ${h.avgCost.toFixed(2)}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-semibold">${currentValue.toFixed(2)}</p>
+                      <p className={`text-sm font-semibold transition-colors duration-300 ${dir === "up" ? "text-emerald-500" : dir === "down" ? "text-red-500" : "text-foreground"}`}>${currentValue.toFixed(2)}</p>
                       <p className={`text-xs font-medium ${pnl >= 0 ? "text-emerald-500" : "text-red-500"}`}>
                         {pnl >= 0 ? "+" : ""}{((pnl / costBasis) * 100).toFixed(1)}%
                       </p>
