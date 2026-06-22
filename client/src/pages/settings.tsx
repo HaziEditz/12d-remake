@@ -180,8 +180,17 @@ export default function SettingsPage() {
   };
 
   useEffect(() => {
-    if (!user) navigate("/login");
-  }, [user]);
+    if (!user) {
+      navigate("/login");
+    } else {
+      profileForm.reset({
+        displayName: user.displayName ?? "",
+        username: (user as any).username ?? "",
+        bio: (user as any).bio ?? "",
+        avatarUrl: user.avatarUrl ?? "",
+      });
+    }
+  }, [user?.id]);
 
   if (!user) return null;
 
