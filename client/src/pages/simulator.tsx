@@ -171,7 +171,7 @@ export default function SimulatorPage() {
   const seriesRef = useRef<any>(null);
   
   const [selectedSymbol, setSelectedSymbol] = useState(() => {
-    return localStorage.getItem("sim-selected-symbol") || "BTC/USD";
+    return localStorage.getItem("sim-default-symbol") || "AAPL";
   });
   const [quantity, setQuantity] = useState("1");
   const [currentPrice, setCurrentPrice] = useState(0);
@@ -254,7 +254,7 @@ export default function SimulatorPage() {
   
   // Persist selected symbol across refreshes
   useEffect(() => {
-    localStorage.setItem("sim-selected-symbol", selectedSymbol);
+    localStorage.setItem("sim-default-symbol", selectedSymbol);
   }, [selectedSymbol]);
 
   // Update price ref whenever currentPrice changes

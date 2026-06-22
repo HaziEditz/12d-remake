@@ -14,7 +14,8 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { User, KeyRound, ArrowLeft, Save, Loader2, Volume2, VolumeX, Trash2 } from "lucide-react";
+import { User, KeyRound, ArrowLeft, Save, Loader2, Volume2, VolumeX, Trash2, BarChart2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,6 +59,15 @@ export default function SettingsPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [soundEnabled, setSoundEnabledState] = useState(isSoundEnabled());
+  const [defaultSymbol, setDefaultSymbolState] = useState(
+    () => localStorage.getItem("sim-default-symbol") || "AAPL"
+  );
+
+  const handleDefaultSymbolChange = (value: string) => {
+    setDefaultSymbolState(value);
+    localStorage.setItem("sim-default-symbol", value);
+    toast({ title: "Default symbol saved", description: `Simulator will open on ${value} from now on.` });
+  };
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
@@ -419,6 +429,70 @@ export default function SettingsPage() {
                 onCheckedChange={handleSoundToggle}
                 data-testid="switch-sound-toggle"
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart2 className="h-5 w-5" />
+              Simulator
+            </CardTitle>
+            <CardDescription>
+              Choose which asset the simulator opens on by default
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="default-symbol">Default Symbol</Label>
+                <p className="text-sm text-muted-foreground">
+                  The simulator will load this asset on launch
+                </p>
+              </div>
+              <Select value={defaultSymbol} onValueChange={handleDefaultSymbolChange}>
+                <SelectTrigger className="w-[180px]" id="default-symbol" data-testid="select-default-symbol">
+                  <SelectValue placeholder="Pick a symbol" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel>Popular Stocks</SelectLabel>
+                    <SelectItem value="AAPL">AAPL — Apple</SelectItem>
+                    <SelectItem value="GOOGL">GOOGL — Google</SelectItem>
+                    <SelectItem value="MSFT">MSFT — Microsoft</SelectItem>
+                    <SelectItem value="AMZN">AMZN — Amazon</SelectItem>
+                    <SelectItem value="TSLA">TSLA — Tesla</SelectItem>
+                    <SelectItem value="META">META — Meta</SelectItem>
+                    <SelectItem value="NVDA">NVDA — Nvidia</SelectItem>
+                    <SelectItem value="NFLX">NFLX — Netflix</SelectItem>
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>Crypto</SelectLabel>
+                    <SelectItem value="BTC/USD">BTC — Bitcoin</SelectItem>
+                    <SelectItem value="ETH/USD">ETH — Ethereum</SelectItem>
+                    <SelectItem value="SOL/USD">SOL — Solana</SelectItem>
+                    <SelectItem value="DOGE/USD">DOGE — Dogecoin</SelectItem>
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>ETFs & Indices</SelectLabel>
+                    <SelectItem value="SPY">SPY — S&P 500</SelectItem>
+                    <SelectItem value="QQQ">QQQ — Nasdaq 100</SelectItem>
+                    <SelectItem value="DIA">DIA — Dow Jones</SelectItem>
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>More Stocks</SelectLabel>
+                    <SelectItem value="AMD">AMD</SelectItem>
+                    <SelectItem value="DIS">DIS — Disney</SelectItem>
+                    <SelectItem value="PYPL">PYPL — PayPal</SelectItem>
+                    <SelectItem value="UBER">UBER — Uber</SelectItem>
+                    <SelectItem value="COIN">COIN — Coinbase</SelectItem>
+                    <SelectItem value="BA">BA — Boeing</SelectItem>
+                    <SelectItem value="JPM">JPM — JPMorgan</SelectItem>
+                    <SelectItem value="V">V — Visa</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>
