@@ -3218,6 +3218,29 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.get("/api/trading-heatmap", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const trades = await storage.getTradesByUser(user.id);
+
+      // Aggregate closed trades by UTC date
+      const byDay = new Map<string, { count: number; profit: number; wins: number }>();
+      for (const t of trades) {
+        if (t.status !== "closed" || !t.closedAt) continue;
+        const key = new Date(t.closedAt).toISOString().slice(0, 10);
+        const existing = byDay.get(key) ?? { count: 0, profit: 0, wins: 0 };
+        existing.count += 1;
+        existing.profit += Number(t.profit ?? 0);
+        if ((t.profit ?? 0) > 0) existing.wins += 1;
+        byDay.set(key, existing);
+      }
+
+      res.json(Object.fromEntries(byDay));
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
   app.get("/api/activity-feed", requireAuth, async (req, res) => {
     try {
       const user = req.user as User;

@@ -412,6 +412,223 @@ function LessonRecommendations() {
   );
 }
 
+// ─── Trading Heatmap ─────────────────────────────────────────────────────────
+
+type DayData = { count: number; profit: number; wins: number };
+
+function tradingCellColor(data: DayData | undefined, isFuture: boolean) {
+  if (isFuture) return "bg-muted/30";
+  if (!data || data.count === 0) return "bg-muted/60 dark:bg-muted/30";
+  const p = data.profit;
+  if (p > 500) return "bg-emerald-600 dark:bg-emerald-500";
+  if (p > 100) return "bg-emerald-500/80 dark:bg-emerald-500/70";
+  if (p > 0)   return "bg-emerald-400/60 dark:bg-emerald-400/50";
+  if (p > -100) return "bg-rose-400/60 dark:bg-rose-400/50";
+  if (p > -500) return "bg-rose-500/80 dark:bg-rose-500/70";
+  return "bg-rose-600 dark:bg-rose-500";
+}
+
+function TradingHeatmap() {
+  const { user } = useAuth();
+  const { data: rawData } = useQuery<Record<string, DayData>>({
+    queryKey: ["/api/trading-heatmap"],
+    enabled: !!user,
+  });
+
+  if (!user) return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const startOfGrid = new Date(today);
+  startOfGrid.setDate(today.getDate() - today.getDay() - (WEEKS - 1) * 7);
+
+  const cells: { date: Date; key: string; data?: DayData }[][] = [];
+  for (let w = 0; w < WEEKS; w++) {
+    const col: { date: Date; key: string; data?: DayData }[] = [];
+    for (let d = 0; d < DAYS; d++) {
+      const date = new Date(startOfGrid);
+      date.setDate(startOfGrid.getDate() + w * 7 + d);
+      const key = toDateKey(date);
+      col.push({ date, key, data: rawData?.[key] });
+    }
+    cells.push(col);
+  }
+
+  const monthLabels: { col: number; label: string }[] = [];
+  let lastMonth = -1;
+  cells.forEach((col, wi) => {
+    const m = col[0].date.getMonth();
+    if (m !== lastMonth) {
+      monthLabels.push({ col: wi, label: col[0].date.toLocaleString("default", { month: "short" }) });
+      lastMonth = m;
+    }
+  });
+
+  const allDays = Object.values(rawData ?? {});
+  const totalTrades = allDays.reduce((s, d) => s + d.count, 0);
+  const totalWins = allDays.reduce((s, d) => s + d.wins, 0);
+  const winRate = totalTrades > 0 ? Math.round((totalWins / totalTrades) * 100) : 0;
+  const totalProfit = allDays.reduce((s, d) => s + d.profit, 0);
+  const bestDay = allDays.length > 0 ? Math.max(...allDays.map(d => d.profit)) : 0;
+  const activeTradeDays = allDays.filter(d => d.count > 0).length;
+
+  // Weekly net P&L bars (last 8 weeks)
+  const weeklyBars = cells.slice(-8).map((col, i) => {
+    const net = col.reduce((s, c) => s + (c.data?.profit ?? 0), 0);
+    return { label: i === 7 ? "Now" : "", net };
+  });
+  const maxAbs = Math.max(...weeklyBars.map(b => Math.abs(b.net)), 1);
+
+  return (
+    <div className="mb-8">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <BarChart2 className="h-5 w-5 text-emerald-500" />
+            Trading Activity
+          </h2>
+          <p className="text-sm text-muted-foreground">Daily simulator trade history — green = profit, red = loss</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {totalTrades > 0 && (
+            <div className="flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+              <TrendingUp className="h-4 w-4" />
+              {winRate}% win rate
+            </div>
+          )}
+          <div className="text-sm text-muted-foreground hidden sm:block">
+            <span className="font-semibold text-foreground">{activeTradeDays}</span> active days
+          </div>
+        </div>
+      </div>
+
+      <Card>
+        <CardContent className="pt-5 pb-5">
+          <div className="overflow-x-auto">
+            <div style={{ minWidth: WEEKS * 18 }}>
+              {/* Month labels */}
+              <div className="flex mb-1" style={{ gap: 3 }}>
+                <div style={{ width: 22 }} />
+                {cells.map((col, wi) => {
+                  const label = monthLabels.find(m => m.col === wi);
+                  return (
+                    <div key={wi} style={{ width: 14, minWidth: 14, fontSize: 9, color: "var(--muted-foreground)", whiteSpace: "nowrap" }}>
+                      {label ? label.label : ""}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Day rows */}
+              {[0, 1, 2, 3, 4, 5, 6].map(dayIdx => (
+                <div key={dayIdx} className="flex items-center" style={{ gap: 3, marginBottom: 3 }}>
+                  <div style={{ width: 22, fontSize: 9, color: "var(--muted-foreground)", textAlign: "right", paddingRight: 4 }}>
+                    {dayIdx === 1 ? "Mon" : dayIdx === 3 ? "Wed" : dayIdx === 5 ? "Fri" : ""}
+                  </div>
+                  {cells.map((col, wi) => {
+                    const cell = col[dayIdx];
+                    const isFuture = cell.date > today;
+                    const isToday = cell.key === toDateKey(today);
+                    const d = cell.data;
+                    const tip = d
+                      ? `${cell.date.toLocaleDateString("default", { month: "short", day: "numeric" })}: ${d.count} trade${d.count !== 1 ? "s" : ""}, ${d.profit >= 0 ? "+" : ""}$${d.profit.toFixed(0)}`
+                      : cell.date.toLocaleDateString("default", { month: "short", day: "numeric" });
+                    return (
+                      <div
+                        key={wi}
+                        title={tip}
+                        className={`rounded-sm transition-colors ${tradingCellColor(d, isFuture)} ${isToday ? "ring-1 ring-emerald-500 ring-offset-1 ring-offset-card" : ""}`}
+                        style={{ width: 14, height: 14, minWidth: 14, cursor: "default" }}
+                      />
+                    );
+                  })}
+                </div>
+              ))}
+
+              {/* Legend */}
+              <div className="flex items-center gap-3 mt-3 justify-end">
+                <div className="flex items-center gap-1">
+                  <span style={{ fontSize: 10, color: "var(--muted-foreground)" }}>Loss</span>
+                  {["bg-rose-600", "bg-rose-500/80", "bg-rose-400/60"].map((c, i) => (
+                    <div key={i} className={`rounded-sm ${c}`} style={{ width: 12, height: 12 }} />
+                  ))}
+                </div>
+                <div className="h-3 w-px bg-border" />
+                <div className="flex items-center gap-1">
+                  {["bg-emerald-400/60", "bg-emerald-500/80", "bg-emerald-600"].map((c, i) => (
+                    <div key={i} className={`rounded-sm ${c}`} style={{ width: 12, height: 12 }} />
+                  ))}
+                  <span style={{ fontSize: 10, color: "var(--muted-foreground)" }}>Profit</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t my-5" />
+
+          <div className="grid md:grid-cols-2 gap-6 items-end">
+            {/* Weekly P&L bars */}
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Weekly net P&L</p>
+              <div className="flex items-end gap-1.5 h-16">
+                {weeklyBars.map((bar, i) => {
+                  const h = Math.round((Math.abs(bar.net) / maxAbs) * 52) + (bar.net !== 0 ? 4 : 0);
+                  const isPos = bar.net >= 0;
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                      <div
+                        className={`w-full rounded-t-sm transition-all ${i === weeklyBars.length - 1 ? (isPos ? "bg-emerald-500" : "bg-rose-500") : (isPos ? "bg-emerald-500/40" : "bg-rose-500/40")}`}
+                        style={{ height: `${h}px`, minHeight: bar.net !== 0 ? 4 : 1 }}
+                      />
+                      {bar.net !== 0 && (
+                        <span className={`text-[9px] font-medium ${isPos ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                          {isPos ? "+" : ""}{bar.net >= 0 ? "" : "-"}${Math.abs(bar.net).toFixed(0)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex gap-1.5 mt-1">
+                {weeklyBars.map((b, i) => (
+                  <div key={i} className="flex-1 text-center text-[8px] text-muted-foreground/60">
+                    {b.label}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-4 gap-2">
+              <div className="rounded-xl bg-muted/40 p-3 text-center">
+                <p className="text-xl font-bold leading-none mb-1">{totalTrades}</p>
+                <p className="text-[11px] text-muted-foreground">Trades</p>
+              </div>
+              <div className="rounded-xl bg-muted/40 p-3 text-center">
+                <p className="text-xl font-bold leading-none mb-1 text-emerald-600 dark:text-emerald-400">{winRate}%</p>
+                <p className="text-[11px] text-muted-foreground">Win rate</p>
+              </div>
+              <div className="rounded-xl bg-muted/40 p-3 text-center">
+                <p className={`text-xl font-bold leading-none mb-1 ${totalProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"}`}>
+                  {totalProfit >= 0 ? "+" : ""}${Math.abs(totalProfit).toFixed(0)}
+                </p>
+                <p className="text-[11px] text-muted-foreground">Net P&L</p>
+              </div>
+              <div className="rounded-xl bg-muted/40 p-3 text-center">
+                <p className="text-xl font-bold leading-none mb-1 text-emerald-600 dark:text-emerald-400">
+                  +${bestDay.toFixed(0)}
+                </p>
+                <p className="text-[11px] text-muted-foreground">Best day</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ─── Activity Feed ────────────────────────────────────────────────────────────
 
 type FeedItem = {
@@ -802,6 +1019,8 @@ export default function DashboardPage() {
         <WelcomeHero />
 
         <LearningActivity />
+
+        <TradingHeatmap />
 
         <LessonRecommendations />
 
