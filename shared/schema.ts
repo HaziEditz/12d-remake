@@ -49,6 +49,7 @@ export const users = pgTable("users", {
   dailyChallengesData: jsonb("daily_challenges_data"),
   luckyBonusClaimedAt: text("lucky_bonus_claimed_at"),
   isFrozen: boolean("is_frozen").default(false),
+  notificationPrefs: jsonb("notification_prefs"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

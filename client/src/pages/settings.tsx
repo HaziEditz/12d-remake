@@ -14,7 +14,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { User, KeyRound, ArrowLeft, Save, Loader2, Volume2, VolumeX, Trash2, BarChart2 } from "lucide-react";
+import { User, KeyRound, ArrowLeft, Save, Loader2, Volume2, VolumeX, Trash2, BarChart2, Bell } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import {
   AlertDialog,
@@ -59,6 +59,42 @@ export default function SettingsPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [soundEnabled, setSoundEnabledState] = useState(isSoundEnabled());
+
+  const defaultNotifPrefs = {
+    priceAlerts: true,
+    achievements: true,
+    friendRequests: true,
+    lessonReminders: true,
+    tradeConfirmations: true,
+    marketEvents: true,
+    weeklyDigest: false,
+  };
+  const userPrefs = (user as any)?.notificationPrefs as Record<string, boolean> | null;
+  const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>({
+    ...defaultNotifPrefs,
+    ...(userPrefs || {}),
+  });
+
+  const notifMutation = useMutation({
+    mutationFn: async (prefs: Record<string, boolean>) => {
+      const response = await apiRequest("PATCH", "/api/user/notifications", prefs);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Notifications updated", description: "Your notification preferences have been saved." });
+      refreshUser();
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to save preferences", variant: "destructive" });
+    },
+  });
+
+  const handleNotifToggle = (key: string, value: boolean) => {
+    const updated = { ...notifPrefs, [key]: value };
+    setNotifPrefs(updated);
+    notifMutation.mutate(updated);
+  };
+
   const [defaultSymbol, setDefaultSymbolState] = useState(
     () => localStorage.getItem("sim-default-symbol") || "AAPL"
   );
@@ -439,6 +475,43 @@ export default function SettingsPage() {
                 data-testid="switch-sound-toggle"
               />
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5" />
+              Notification Preferences
+            </CardTitle>
+            <CardDescription>
+              Choose which in-app alerts you want to receive
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {[
+              { key: "priceAlerts", label: "Price Alerts", description: "Notify when your price alert targets are hit" },
+              { key: "achievements", label: "Achievements", description: "Celebrate when you unlock new achievements" },
+              { key: "friendRequests", label: "Friend Requests", description: "Alert when someone sends you a friend request" },
+              { key: "lessonReminders", label: "Lesson Reminders", description: "Nudge to keep your lesson streak alive" },
+              { key: "tradeConfirmations", label: "Trade Confirmations", description: "Confirm when your trades are executed" },
+              { key: "marketEvents", label: "Market Events", description: "Announce booms, crashes, and news events" },
+              { key: "weeklyDigest", label: "Weekly Digest", description: "Summary of your performance each week" },
+            ].map(({ key, label, description }) => (
+              <div key={key} className="flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <Label htmlFor={`notif-${key}`}>{label}</Label>
+                  <p className="text-sm text-muted-foreground">{description}</p>
+                </div>
+                <Switch
+                  id={`notif-${key}`}
+                  checked={notifPrefs[key] ?? true}
+                  onCheckedChange={(val) => handleNotifToggle(key, val)}
+                  disabled={notifMutation.isPending}
+                  data-testid={`switch-notif-${key}`}
+                />
+              </div>
+            ))}
           </CardContent>
         </Card>
 

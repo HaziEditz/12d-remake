@@ -3047,6 +3047,29 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.patch("/api/user/notifications", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const prefsSchema = z.object({
+        priceAlerts: z.boolean().optional(),
+        achievements: z.boolean().optional(),
+        friendRequests: z.boolean().optional(),
+        lessonReminders: z.boolean().optional(),
+        tradeConfirmations: z.boolean().optional(),
+        marketEvents: z.boolean().optional(),
+        weeklyDigest: z.boolean().optional(),
+      });
+      const prefs = prefsSchema.parse(req.body);
+      const fullUser = await storage.getUserById(user.id);
+      const current = (fullUser?.notificationPrefs as Record<string, boolean>) || {};
+      const merged = { ...current, ...prefs };
+      await storage.updateUser(user.id, { notificationPrefs: merged });
+      res.json({ notificationPrefs: merged });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
   app.get("/api/users/search", async (req, res) => {
     try {
       const query = req.query.q as string;
