@@ -53,6 +53,7 @@ import CasualPortfolioAnalysis from "@/pages/casual-portfolio-analysis";
 import ShopPage from "@/pages/shop";
 import MessagesPage from "@/pages/messages";
 import LeaguesPage from "@/pages/leagues";
+import AdminConsole from "@/components/admin-console";
 
 function Router() {
   const { user } = useAuth();
@@ -143,11 +144,14 @@ function AppContent() {
     return <PageLoadingScreen />;
   }
 
+  const isAdmin = user?.role === "admin";
+
   if (isAdminPage) {
     return (
       <div className="h-screen w-screen overflow-hidden bg-background">
         <Router />
         <Toaster />
+        {isAdmin && <AdminConsole />}
       </div>
     );
   }
@@ -157,6 +161,7 @@ function AppContent() {
       <>
         <Router />
         <Toaster />
+        {isAdmin && <AdminConsole />}
       </>
     );
   }
@@ -168,6 +173,7 @@ function AppContent() {
       <Router />
       <OnboardingTour />
       <AchievementNotificationProvider />
+      {isAdmin && <AdminConsole />}
     </div>
   );
 }

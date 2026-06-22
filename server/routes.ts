@@ -872,6 +872,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.post("/api/trades", requireAuth, async (req, res) => {
     try {
       const user = req.user as User;
+      if (user.isFrozen) {
+        return res.status(403).json({ message: "Your trading account has been frozen by an admin." });
+      }
       const { orderType = "market", triggerPrice, stopLossPrice, takeProfitPrice, trailingPercent, ...rest } = req.body;
       
       // Validate order type
@@ -4855,6 +4858,122 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       await storage.completeLeagueChallenge(user.id, req.params.id, lp);
       res.json({ ok: true, lpAwarded: lp });
     } catch (e: any) { res.status(400).json({ message: e.message }); }
+  });
+
+  // ── Admin Console Commands ───────────────────────────────────────────────────
+  app.post("/api/admin/console", requireAdmin, async (req, res) => {
+    const { command } = req.body as { command: string };
+    if (!command || typeof command !== "string") {
+      return res.status(400).json({ output: "No command provided.", success: false });
+    }
+
+    const raw = command.startsWith("/") ? command.slice(1).trim() : command.trim();
+    const parts = raw.split(/\s+/);
+    const cmd = parts[0]?.toLowerCase();
+
+    // Helper: find user by displayName, username, or email (case-insensitive)
+    async function findPlayer(query: string) {
+      const all = await storage.getAllUsers();
+      const q = query.toLowerCase();
+      return all.find(u =>
+        u.displayName?.toLowerCase() === q ||
+        u.username?.toLowerCase() === q ||
+        u.email?.toLowerCase() === q
+      );
+    }
+
+    try {
+      if (cmd === "give") {
+        const [, playerName, rawAmount] = parts;
+        if (!playerName || !rawAmount) return res.json({ output: "Usage: /give <player> <amount>", success: false });
+        const amount = parseFloat(rawAmount);
+        if (isNaN(amount) || amount <= 0) return res.json({ output: "Amount must be a positive number.", success: false });
+        const target = await findPlayer(playerName);
+        if (!target) return res.json({ output: `Player "${playerName}" not found.`, success: false });
+        const newBalance = (target.simulatorBalance ?? 0) + amount;
+        await storage.updateUser(target.id, { simulatorBalance: newBalance });
+        return res.json({ output: `✓ Gave $${amount.toLocaleString()} to ${target.displayName}. New balance: $${newBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, success: true });
+
+      } else if (cmd === "take") {
+        const [, playerName, rawAmount] = parts;
+        if (!playerName || !rawAmount) return res.json({ output: "Usage: /take <player> <amount>", success: false });
+        const amount = parseFloat(rawAmount);
+        if (isNaN(amount) || amount <= 0) return res.json({ output: "Amount must be a positive number.", success: false });
+        const target = await findPlayer(playerName);
+        if (!target) return res.json({ output: `Player "${playerName}" not found.`, success: false });
+        const newBalance = Math.max(0, (target.simulatorBalance ?? 0) - amount);
+        await storage.updateUser(target.id, { simulatorBalance: newBalance });
+        return res.json({ output: `✓ Took $${amount.toLocaleString()} from ${target.displayName}. New balance: $${newBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, success: true });
+
+      } else if (cmd === "freeze") {
+        const [, playerName] = parts;
+        if (!playerName) return res.json({ output: "Usage: /freeze <player>", success: false });
+        const target = await findPlayer(playerName);
+        if (!target) return res.json({ output: `Player "${playerName}" not found.`, success: false });
+        if (target.isFrozen) return res.json({ output: `${target.displayName} is already frozen. Use /unfreeze to lift the freeze.`, success: false });
+        await storage.updateUser(target.id, { isFrozen: true });
+        return res.json({ output: `✓ ${target.displayName}'s trading account has been frozen.`, success: true });
+
+      } else if (cmd === "unfreeze") {
+        const [, playerName] = parts;
+        if (!playerName) return res.json({ output: "Usage: /unfreeze <player>", success: false });
+        const target = await findPlayer(playerName);
+        if (!target) return res.json({ output: `Player "${playerName}" not found.`, success: false });
+        await storage.updateUser(target.id, { isFrozen: false });
+        return res.json({ output: `✓ ${target.displayName}'s account has been unfrozen. Trading resumed.`, success: true });
+
+      } else if (cmd === "reset") {
+        const [, playerName] = parts;
+        if (!playerName) return res.json({ output: "Usage: /reset <player>", success: false });
+        const target = await findPlayer(playerName);
+        if (!target) return res.json({ output: `Player "${playerName}" not found.`, success: false });
+        await storage.resetUserBalance(target.id, 5000);
+        await storage.updateUser(target.id, { totalProfit: 0, isFrozen: false });
+        return res.json({ output: `✓ ${target.displayName}'s portfolio has been wiped. Balance reset to $5,000.00.`, success: true });
+
+      } else if (cmd === "assets") {
+        const [, playerName] = parts;
+        if (!playerName) return res.json({ output: "Usage: /assets <player>", success: false });
+        const target = await findPlayer(playerName);
+        if (!target) return res.json({ output: `Player "${playerName}" not found.`, success: false });
+        const items = await storage.getPortfolioItems(target.id);
+        const openTrades = await storage.getTrades(target.id);
+        const openPositions = openTrades.filter(t => t.status === "open");
+        if (items.length === 0 && openPositions.length === 0) {
+          return res.json({ output: `${target.displayName} has no holdings. Balance: $${(target.simulatorBalance ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, success: true });
+        }
+        const lines = [`${target.displayName} — Balance: $${(target.simulatorBalance ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`];
+        if (items.length > 0) {
+          lines.push("Holdings:");
+          items.forEach(item => lines.push(`  ${item.symbol}: ${item.quantity} shares @ $${item.currentPrice?.toFixed(2) ?? item.purchasePrice.toFixed(2)}`));
+        }
+        if (openPositions.length > 0) {
+          lines.push("Open Trades:");
+          openPositions.forEach(t => lines.push(`  ${t.type.toUpperCase()} ${t.quantity} ${t.symbol} @ $${t.entryPrice.toFixed(2)}`));
+        }
+        return res.json({ output: lines.join("\n"), success: true });
+
+      } else if (cmd === "help") {
+        return res.json({
+          output: [
+            "Available commands:",
+            "  /give <player> <amount>  — Grant cash to a player",
+            "  /take <player> <amount>  — Fine a player",
+            "  /freeze <player>         — Block a player from trading",
+            "  /unfreeze <player>       — Lift a trading freeze",
+            "  /reset <player>          — Wipe portfolio back to $5,000",
+            "  /assets <player>         — View a player's holdings",
+            "  /help                    — Show this list",
+          ].join("\n"),
+          success: true
+        });
+
+      } else {
+        return res.json({ output: `Unknown command: "${cmd}". Type /help for available commands.`, success: false });
+      }
+    } catch (err: any) {
+      return res.status(500).json({ output: `Error: ${err.message}`, success: false });
+    }
   });
 
   // Background achievement check loop
