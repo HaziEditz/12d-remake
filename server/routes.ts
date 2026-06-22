@@ -3218,6 +3218,84 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.get("/api/activity-feed", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const [trades, lessonProgressList, allLessons, userAchievementsList, allAchievements] = await Promise.all([
+        storage.getTradesByUser(user.id),
+        storage.getLessonProgress(user.id),
+        storage.getLessons(),
+        storage.getUserAchievements(user.id),
+        storage.getAchievements(),
+      ]);
+
+      const lessonMap = new Map(allLessons.map(l => [l.id, l]));
+      const achievementMap = new Map(allAchievements.map(a => [a.id, a]));
+
+      type FeedItem = {
+        type: "trade" | "lesson" | "achievement";
+        timestamp: Date;
+        title: string;
+        subtitle: string;
+        meta?: string;
+        positive?: boolean;
+      };
+
+      const items: FeedItem[] = [];
+
+      for (const t of trades) {
+        if (t.status === "closed" && t.closedAt) {
+          items.push({
+            type: "trade",
+            timestamp: new Date(t.closedAt),
+            title: `${t.type === "buy" ? "Bought" : "Sold"} ${t.symbol}`,
+            subtitle: `${t.quantity} unit${t.quantity !== 1 ? "s" : ""} @ $${Number(t.exitPrice ?? t.entryPrice).toFixed(2)}`,
+            meta: t.profit != null ? `${t.profit >= 0 ? "+" : ""}$${Number(t.profit).toFixed(2)}` : undefined,
+            positive: (t.profit ?? 0) >= 0,
+          });
+        }
+      }
+
+      for (const lp of lessonProgressList) {
+        if (lp.completed && lp.completedAt) {
+          const lesson = lessonMap.get(lp.lessonId);
+          if (lesson) {
+            items.push({
+              type: "lesson",
+              timestamp: new Date(lp.completedAt),
+              title: `Completed: ${lesson.title}`,
+              subtitle: `${lesson.category} · ${lesson.difficulty}`,
+              meta: `+${lesson.xpReward ?? 20} XP`,
+              positive: true,
+            });
+          }
+        }
+      }
+
+      for (const ua of userAchievementsList) {
+        if ((ua.progress ?? 0) >= 100 && ua.unlockedAt) {
+          const ach = achievementMap.get(ua.achievementId);
+          if (ach) {
+            items.push({
+              type: "achievement",
+              timestamp: new Date(ua.unlockedAt),
+              title: `Unlocked: ${ach.name}`,
+              subtitle: ach.description,
+              meta: `+${ach.xpReward} XP`,
+              positive: true,
+            });
+          }
+        }
+      }
+
+      items.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+      res.json(items.slice(0, 30));
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
   app.get("/api/user/achievements", requireAuth, async (req, res) => {
     try {
       const user = req.user as User;

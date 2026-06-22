@@ -412,6 +412,133 @@ function LessonRecommendations() {
   );
 }
 
+// ─── Activity Feed ────────────────────────────────────────────────────────────
+
+type FeedItem = {
+  type: "trade" | "lesson" | "achievement";
+  timestamp: string;
+  title: string;
+  subtitle: string;
+  meta?: string;
+  positive?: boolean;
+};
+
+function timeAgo(ts: string) {
+  const diff = Date.now() - new Date(ts).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function feedIcon(type: FeedItem["type"], positive?: boolean) {
+  if (type === "trade") {
+    return positive
+      ? <TrendingUp className="h-4 w-4 text-success" />
+      : <TrendingDown className="h-4 w-4 text-destructive" />;
+  }
+  if (type === "lesson") return <BookOpen className="h-4 w-4 text-primary" />;
+  return <Trophy className="h-4 w-4 text-yellow-500" />;
+}
+
+function feedDotColor(type: FeedItem["type"], positive?: boolean) {
+  if (type === "trade") return positive ? "bg-success" : "bg-destructive";
+  if (type === "lesson") return "bg-primary";
+  return "bg-yellow-500";
+}
+
+function ActivityFeed() {
+  const { user } = useAuth();
+  const [showAll, setShowAll] = useState(false);
+
+  const { data: feed, isLoading } = useQuery<FeedItem[]>({
+    queryKey: ["/api/activity-feed"],
+    enabled: !!user,
+  });
+
+  const visible = showAll ? (feed ?? []) : (feed ?? []).slice(0, 8);
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Activity className="h-4 w-4" />
+            Activity Feed
+          </CardTitle>
+          {(feed?.length ?? 0) > 8 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs h-7"
+              onClick={() => setShowAll(v => !v)}
+              data-testid="button-toggle-feed"
+            >
+              {showAll ? "Show less" : `View all ${feed!.length}`}
+            </Button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-4">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="flex items-start gap-3">
+                <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : !feed || feed.length === 0 ? (
+          <div className="text-center py-10">
+            <Activity className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">No activity yet — make a trade or complete a lesson!</p>
+          </div>
+        ) : (
+          <div className="relative">
+            <div className="absolute left-[15px] top-2 bottom-2 w-px bg-border" />
+            <div className="space-y-1">
+              {visible.map((item, i) => (
+                <div key={i} className="flex items-start gap-3 pl-1 py-2 rounded-lg hover:bg-muted/50 transition-colors group" data-testid={`feed-item-${i}`}>
+                  <div className="relative z-10 shrink-0">
+                    <div className={`h-8 w-8 rounded-full border-2 border-background flex items-center justify-center ${
+                      item.type === "achievement" ? "bg-yellow-500/10" :
+                      item.type === "lesson" ? "bg-primary/10" :
+                      item.positive ? "bg-success/10" : "bg-destructive/10"
+                    }`}>
+                      {feedIcon(item.type, item.positive)}
+                    </div>
+                    <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background ${feedDotColor(item.type, item.positive)}`} />
+                  </div>
+                  <div className="flex-1 min-w-0 pt-0.5">
+                    <p className="text-sm font-medium leading-snug truncate">{item.title}</p>
+                    <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p>
+                  </div>
+                  <div className="shrink-0 text-right pt-0.5">
+                    {item.meta && (
+                      <p className={`text-xs font-semibold ${item.positive ? "text-success" : "text-destructive"}`}>
+                        {item.meta}
+                      </p>
+                    )}
+                    <p className="text-[11px] text-muted-foreground">{timeAgo(item.timestamp)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 function getGreeting() {
@@ -677,6 +804,10 @@ export default function DashboardPage() {
         <LearningActivity />
 
         <LessonRecommendations />
+
+        <div className="mb-8">
+          <ActivityFeed />
+        </div>
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
