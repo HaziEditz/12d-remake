@@ -4886,11 +4886,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (cmd === "give") {
         const rawAmount = parts[parts.length - 1];
         const playerName = parts.slice(1, parts.length - 1).join(" ");
-        if (!playerName || !rawAmount || parts.length < 3) return res.json({ output: "Usage: /give <player name> <amount>", success: false });
+        if (!playerName || !rawAmount || parts.length < 3) return res.json({ output: "Usage: /give <user> <amount>", success: false });
         const amount = parseFloat(rawAmount);
         if (isNaN(amount) || amount <= 0) return res.json({ output: "Amount must be a positive number.", success: false });
         const target = await findPlayer(playerName);
-        if (!target) return res.json({ output: `Player "${playerName}" not found.`, success: false });
+        if (!target) return res.json({ output: `User "${playerName}" not found.`, success: false });
         const newBalance = (target.simulatorBalance ?? 0) + amount;
         await storage.updateUser(target.id, { simulatorBalance: newBalance });
         return res.json({ output: `✓ Gave $${amount.toLocaleString()} to ${target.displayName}. New balance: $${newBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, success: true });
@@ -4898,46 +4898,46 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       } else if (cmd === "take") {
         const rawAmount = parts[parts.length - 1];
         const playerName = parts.slice(1, parts.length - 1).join(" ");
-        if (!playerName || !rawAmount || parts.length < 3) return res.json({ output: "Usage: /take <player name> <amount>", success: false });
+        if (!playerName || !rawAmount || parts.length < 3) return res.json({ output: "Usage: /take <user> <amount>", success: false });
         const amount = parseFloat(rawAmount);
         if (isNaN(amount) || amount <= 0) return res.json({ output: "Amount must be a positive number.", success: false });
         const target = await findPlayer(playerName);
-        if (!target) return res.json({ output: `Player "${playerName}" not found.`, success: false });
+        if (!target) return res.json({ output: `User "${playerName}" not found.`, success: false });
         const newBalance = Math.max(0, (target.simulatorBalance ?? 0) - amount);
         await storage.updateUser(target.id, { simulatorBalance: newBalance });
         return res.json({ output: `✓ Took $${amount.toLocaleString()} from ${target.displayName}. New balance: $${newBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, success: true });
 
       } else if (cmd === "freeze") {
         const playerName = parts.slice(1).join(" ");
-        if (!playerName) return res.json({ output: "Usage: /freeze <player name>", success: false });
+        if (!playerName) return res.json({ output: "Usage: /freeze <user>", success: false });
         const target = await findPlayer(playerName);
-        if (!target) return res.json({ output: `Player "${playerName}" not found.`, success: false });
+        if (!target) return res.json({ output: `User "${playerName}" not found.`, success: false });
         if (target.isFrozen) return res.json({ output: `${target.displayName} is already frozen. Use /unfreeze to lift the freeze.`, success: false });
         await storage.updateUser(target.id, { isFrozen: true });
         return res.json({ output: `✓ ${target.displayName}'s trading account has been frozen.`, success: true });
 
       } else if (cmd === "unfreeze") {
         const playerName = parts.slice(1).join(" ");
-        if (!playerName) return res.json({ output: "Usage: /unfreeze <player name>", success: false });
+        if (!playerName) return res.json({ output: "Usage: /unfreeze <user>", success: false });
         const target = await findPlayer(playerName);
-        if (!target) return res.json({ output: `Player "${playerName}" not found.`, success: false });
+        if (!target) return res.json({ output: `User "${playerName}" not found.`, success: false });
         await storage.updateUser(target.id, { isFrozen: false });
         return res.json({ output: `✓ ${target.displayName}'s account has been unfrozen. Trading resumed.`, success: true });
 
       } else if (cmd === "reset") {
         const playerName = parts.slice(1).join(" ");
-        if (!playerName) return res.json({ output: "Usage: /reset <player name>", success: false });
+        if (!playerName) return res.json({ output: "Usage: /reset <user>", success: false });
         const target = await findPlayer(playerName);
-        if (!target) return res.json({ output: `Player "${playerName}" not found.`, success: false });
+        if (!target) return res.json({ output: `User "${playerName}" not found.`, success: false });
         await storage.resetUserBalance(target.id, 5000);
         await storage.updateUser(target.id, { totalProfit: 0, isFrozen: false });
         return res.json({ output: `✓ ${target.displayName}'s portfolio has been wiped. Balance reset to $5,000.00.`, success: true });
 
       } else if (cmd === "assets") {
         const playerName = parts.slice(1).join(" ");
-        if (!playerName) return res.json({ output: "Usage: /assets <player name>", success: false });
+        if (!playerName) return res.json({ output: "Usage: /assets <user>", success: false });
         const target = await findPlayer(playerName);
-        if (!target) return res.json({ output: `Player "${playerName}" not found.`, success: false });
+        if (!target) return res.json({ output: `User "${playerName}" not found.`, success: false });
         const items = await storage.getPortfolioItems(target.id);
         const openTrades = await storage.getTrades(target.id);
         const openPositions = openTrades.filter(t => t.status === "open");
@@ -4955,17 +4955,30 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         }
         return res.json({ output: lines.join("\n"), success: true });
 
+      } else if (cmd === "list") {
+        const all = await storage.getAllUsers();
+        if (all.length === 0) return res.json({ output: "No users found.", success: true });
+        const lines = ["Users:"];
+        for (const u of all) {
+          const bal = `$${(u.simulatorBalance ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          const frozen = u.isFrozen ? " [FROZEN]" : "";
+          const role = u.role === "admin" ? " (admin)" : "";
+          lines.push(`  ${u.displayName ?? u.email}${role}${frozen} — ${bal}`);
+        }
+        return res.json({ output: lines.join("\n"), success: true });
+
       } else if (cmd === "help") {
         return res.json({
           output: [
             "Available commands:",
-            "  /give <player> <amount>  — Grant cash to a player",
-            "  /take <player> <amount>  — Fine a player",
-            "  /freeze <player>         — Block a player from trading",
-            "  /unfreeze <player>       — Lift a trading freeze",
-            "  /reset <player>          — Wipe portfolio back to $5,000",
-            "  /assets <player>         — View a player's holdings",
-            "  /help                    — Show this list",
+            "  /give <user> <amount>  — Grant cash to a user",
+            "  /take <user> <amount>  — Fine a user",
+            "  /freeze <user>         — Block a user from trading",
+            "  /unfreeze <user>       — Lift a trading freeze",
+            "  /reset <user>          — Wipe portfolio back to $5,000",
+            "  /assets <user>         — View a user's holdings",
+            "  /list                  — List all users and balances",
+            "  /help                  — Show this list",
           ].join("\n"),
           success: true
         });
