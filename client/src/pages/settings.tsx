@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
@@ -169,10 +169,11 @@ export default function SettingsPage() {
       .slice(0, 2);
   };
 
-  if (!user) {
-    navigate("/login");
-    return null;
-  }
+  useEffect(() => {
+    if (!user) navigate("/login");
+  }, [user]);
+
+  if (!user) return null;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">

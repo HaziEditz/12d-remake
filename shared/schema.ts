@@ -988,11 +988,11 @@ export const loginSchema = z.object({
 
 export const updateProfileSchema = z.object({
   displayName: z.string().min(2, "Display name must be at least 2 characters").optional(),
-  bio: z.string().max(200, "Bio must be at most 200 characters").optional(),
-  avatarUrl: z.string().url("Invalid URL").optional().nullable(),
+  bio: z.string().max(500, "Bio must be at most 500 characters").optional(),
+  avatarUrl: z.string().optional().nullable(),
   username: z.string()
     .min(3, "Username must be at least 3 characters")
-    .max(20, "Username must be at most 200 characters")
+    .max(20, "Username must be at most 20 characters")
     .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers and underscores")
     .optional()
     .nullable(),
