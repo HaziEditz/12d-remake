@@ -15,8 +15,12 @@ import { useToast } from "@/hooks/use-toast";
 import {
   BookOpen, Plus, TrendingUp, TrendingDown, Search, Pencil, Trash2,
   Brain, Target, Lightbulb, ChevronDown, ChevronUp, Filter,
-  Download, List, CalendarDays, ChevronLeft, ChevronRight, X,
+  Download, List, CalendarDays, ChevronLeft, ChevronRight, X, BarChart2,
 } from "lucide-react";
+import {
+  ComposedChart, Bar, Cell, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, ReferenceLine, Area,
+} from "recharts";
 import type { JournalEntry } from "@shared/schema";
 
 type Trade = {
@@ -289,6 +293,109 @@ function CalendarHeatmap({
         </div>
         <span>Loss</span>
       </div>
+
+      {/* ── P&L chart ──────────────────────────────── */}
+      {monthEntries.length > 0 && (() => {
+        // Build daily bar + running cumulative for this month
+        const sorted = [...monthEntries].sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
+        // Aggregate by day (same day can have multiple entries)
+        const byDay: Record<string, number> = {};
+        for (const e of sorted) {
+          const d = e.date.slice(0, 10);
+          byDay[d] = (byDay[d] ?? 0) + (e.pnl ?? 0);
+        }
+        // Build ordered array and compute running cumulative
+        let running = 0;
+        const chartData = Object.entries(byDay)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([date, pnl]) => {
+            running += pnl;
+            const day = parseInt(date.slice(8));
+            return { label: `${day}`, pnl: parseFloat(pnl.toFixed(2)), cumulative: parseFloat(running.toFixed(2)) };
+          });
+
+        const maxAbs = Math.max(...chartData.map(d => Math.max(Math.abs(d.pnl), Math.abs(d.cumulative))), 1);
+
+        return (
+          <Card className="mt-5">
+            <CardHeader className="pb-2 flex-row items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <BarChart2 className="h-4 w-4" />
+                {MONTH_NAMES[month]} P&L — Daily &amp; Cumulative
+              </CardTitle>
+              <div className="flex items-center gap-3 text-[11px]">
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-3 h-3 rounded-sm bg-emerald-500/70" />
+                  Daily profit
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-3 h-1 rounded-full bg-blue-500" />
+                  Cumulative
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0 pb-4">
+              <ResponsiveContainer width="100%" height={180}>
+                <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    domain={[-maxAbs * 1.15, maxAbs * 1.15]}
+                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={v => `$${Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(1)}k` : v}`}
+                    width={46}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "hsl(var(--popover))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                      fontSize: 12,
+                    }}
+                    formatter={(value: number, name: string) => [
+                      `${value >= 0 ? "+" : ""}$${value.toFixed(2)}`,
+                      name === "pnl" ? "Day P&L" : "Cumulative",
+                    ]}
+                    labelFormatter={label => `Day ${label}`}
+                  />
+                  <ReferenceLine y={0} stroke="hsl(var(--border))" strokeWidth={1.5} />
+                  <Bar
+                    dataKey="pnl"
+                    radius={[3, 3, 0, 0]}
+                    maxBarSize={28}
+                    isAnimationActive={false}
+                  >
+                    {chartData.map((d, i) => (
+                      <Cell
+                        key={i}
+                        fill={d.pnl >= 0 ? "rgba(16,185,129,0.75)" : "rgba(244,63,94,0.75)"}
+                      />
+                    ))}
+                  </Bar>
+                  <Area
+                    type="monotone"
+                    dataKey="cumulative"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    dot={false}
+                    fill="rgba(59,130,246,0.08)"
+                    activeDot={{ r: 4, fill: "#3b82f6" }}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Selected day panel */}
       {selected && (
