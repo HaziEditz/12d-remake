@@ -68,12 +68,14 @@ export default function SettingsPage() {
     tradeConfirmations: true,
     marketEvents: true,
     weeklyDigest: false,
+    dnd: false,
   };
   const userPrefs = (user as any)?.notificationPrefs as Record<string, boolean> | null;
   const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>({
     ...defaultNotifPrefs,
     ...(userPrefs || {}),
   });
+  const dndOn = notifPrefs.dnd === true;
 
   const notifMutation = useMutation({
     mutationFn: async (prefs: Record<string, boolean>) => {
@@ -489,29 +491,49 @@ export default function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {[
-              { key: "priceAlerts", label: "Price Alerts", description: "Notify when your price alert targets are hit" },
-              { key: "achievements", label: "Achievements", description: "Celebrate when you unlock new achievements" },
-              { key: "friendRequests", label: "Friend Requests", description: "Alert when someone sends you a friend request" },
-              { key: "lessonReminders", label: "Lesson Reminders", description: "Nudge to keep your lesson streak alive" },
-              { key: "tradeConfirmations", label: "Trade Confirmations", description: "Confirm when your trades are executed" },
-              { key: "marketEvents", label: "Market Events", description: "Announce booms, crashes, and news events" },
-              { key: "weeklyDigest", label: "Weekly Digest", description: "Summary of your performance each week" },
-            ].map(({ key, label, description }) => (
-              <div key={key} className="flex items-center justify-between gap-4">
-                <div className="space-y-0.5">
-                  <Label htmlFor={`notif-${key}`}>{label}</Label>
-                  <p className="text-sm text-muted-foreground">{description}</p>
-                </div>
-                <Switch
-                  id={`notif-${key}`}
-                  checked={notifPrefs[key] ?? true}
-                  onCheckedChange={(val) => handleNotifToggle(key, val)}
-                  disabled={notifMutation.isPending}
-                  data-testid={`switch-notif-${key}`}
-                />
+            <div className={`flex items-center justify-between gap-4 rounded-lg p-3 border ${dndOn ? "border-destructive/50 bg-destructive/5" : "border-border bg-muted/30"}`}>
+              <div className="space-y-0.5">
+                <Label htmlFor="notif-dnd" className={dndOn ? "text-destructive font-semibold" : "font-semibold"}>
+                  Do Not Disturb
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  {dndOn ? "All notifications are silenced — individual settings preserved" : "Silence everything with one switch"}
+                </p>
               </div>
-            ))}
+              <Switch
+                id="notif-dnd"
+                checked={dndOn}
+                onCheckedChange={(val) => handleNotifToggle("dnd", val)}
+                disabled={notifMutation.isPending}
+                data-testid="switch-notif-dnd"
+              />
+            </div>
+
+            <div className={`space-y-4 transition-opacity duration-200 ${dndOn ? "opacity-40 pointer-events-none" : "opacity-100"}`}>
+              {[
+                { key: "priceAlerts", label: "Price Alerts", description: "Notify when your price alert targets are hit" },
+                { key: "achievements", label: "Achievements", description: "Celebrate when you unlock new achievements" },
+                { key: "friendRequests", label: "Friend Requests", description: "Alert when someone sends you a friend request" },
+                { key: "lessonReminders", label: "Lesson Reminders", description: "Nudge to keep your lesson streak alive" },
+                { key: "tradeConfirmations", label: "Trade Confirmations", description: "Confirm when your trades are executed" },
+                { key: "marketEvents", label: "Market Events", description: "Announce booms, crashes, and news events" },
+                { key: "weeklyDigest", label: "Weekly Digest", description: "Summary of your performance each week" },
+              ].map(({ key, label, description }) => (
+                <div key={key} className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <Label htmlFor={`notif-${key}`}>{label}</Label>
+                    <p className="text-sm text-muted-foreground">{description}</p>
+                  </div>
+                  <Switch
+                    id={`notif-${key}`}
+                    checked={notifPrefs[key] ?? true}
+                    onCheckedChange={(val) => handleNotifToggle(key, val)}
+                    disabled={notifMutation.isPending || dndOn}
+                    data-testid={`switch-notif-${key}`}
+                  />
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
 

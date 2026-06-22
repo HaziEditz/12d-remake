@@ -8,11 +8,13 @@ const DEFAULTS: Record<string, boolean> = {
   tradeConfirmations: true,
   marketEvents: true,
   weeklyDigest: false,
+  dnd: false,
 };
 
 export function useNotifPref(key: string): boolean {
   const { user } = useAuth();
   const prefs = (user as any)?.notificationPrefs as Record<string, boolean> | null | undefined;
+  if (prefs?.dnd) return false;
   if (!prefs || prefs[key] === undefined) return DEFAULTS[key] ?? true;
   return prefs[key];
 }
@@ -21,6 +23,7 @@ export function getNotifPrefForType(
   notifType: string,
   prefs: Record<string, boolean> | null | undefined
 ): boolean {
+  if (prefs?.dnd) return false;
   const map: Record<string, string> = {
     friend_request: "friendRequests",
     friend_accepted: "friendRequests",
