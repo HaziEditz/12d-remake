@@ -12,6 +12,8 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bell, Check, UserPlus, TrendingUp, MessageCircle, Award, X, GraduationCap, BookOpen } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/lib/auth-context";
+import { getNotifPrefForType } from "@/lib/notif-prefs";
 import type { Notification } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 import { useLocation } from "wouter";
@@ -62,6 +64,7 @@ function sendPushNotification(title: string, body: string) {
 
 export function NotificationBell() {
   const [, navigate] = useLocation();
+  const { user } = useAuth();
   const [pushPermission, setPushPermission] = useState<NotificationPermission>(
     typeof window !== "undefined" && "Notification" in window ? Notification.permission : "denied"
   );
@@ -80,6 +83,7 @@ export function NotificationBell() {
 
   useEffect(() => {
     if (notifications.length === 0) return;
+    const prefs = (user as any)?.notificationPrefs as Record<string, boolean> | null | undefined;
     if (isFirstLoad.current) {
       notifications.forEach(n => seenIds.current.add(n.id));
       isFirstLoad.current = false;
@@ -87,11 +91,13 @@ export function NotificationBell() {
     }
     notifications.forEach(n => {
       if (!seenIds.current.has(n.id) && !n.isRead) {
-        sendPushNotification(n.title, n.message);
+        if (getNotifPrefForType(n.type, prefs)) {
+          sendPushNotification(n.title, n.message);
+        }
         seenIds.current.add(n.id);
       }
     });
-  }, [notifications]);
+  }, [notifications, user]);
 
   const markReadMutation = useMutation({
     mutationFn: (id: string) => apiRequest("POST", `/api/notifications/${id}/read`),

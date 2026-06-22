@@ -14,6 +14,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Paywall } from "@/components/paywall";
 import { Link } from "wouter";
 import { playTradeSound } from "@/lib/sounds";
+import { useNotifPref } from "@/lib/notif-prefs";
 import { SimulatorTutorial, useSimulatorTutorialAutoStart } from "@/components/simulator-tutorial";
 import { 
   TrendingUp, 
@@ -165,6 +166,7 @@ async function fetchRealTimePrice(symbol: string): Promise<number | null> {
 export default function SimulatorPage() {
   const { user, refreshUser } = useAuth();
   const { toast } = useToast();
+  const tradeConfirmations = useNotifPref("tradeConfirmations");
   const { shouldShow, setShouldShow } = useSimulatorTutorialAutoStart();
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<ReturnType<typeof createChart> | null>(null);
@@ -211,11 +213,13 @@ export default function SimulatorPage() {
       refetchLimits();
       refreshUser();
       playTradeSound();
-      const isPending = variables.orderType && variables.orderType !== "market";
-      toast({ 
-        title: isPending ? "Order placed successfully" : "Trade opened successfully",
-        description: isPending ? "Your order will execute when the price target is reached" : undefined
-      });
+      if (tradeConfirmations) {
+        const isPending = variables.orderType && variables.orderType !== "market";
+        toast({ 
+          title: isPending ? "Order placed successfully" : "Trade opened successfully",
+          description: isPending ? "Your order will execute when the price target is reached" : undefined
+        });
+      }
     },
     onError: (error: any) => {
       const message = error?.message || "Failed to open trade";
@@ -231,7 +235,7 @@ export default function SimulatorPage() {
       refreshUser();
       playTradeSound();
       queryClient.invalidateQueries({ queryKey: ["/api/user/achievements"] });
-      toast({ title: "Trade closed" });
+      if (tradeConfirmations) toast({ title: "Trade closed" });
     },
     onError: () => {
       toast({ title: "Failed to close trade", variant: "destructive" });
@@ -298,26 +302,30 @@ export default function SimulatorPage() {
           refetchTrades();
           refreshUser();
           playTradeSound();
-          toast({ 
-            title: `${response.executed} order${response.executed > 1 ? 's' : ''} executed`,
-            description: "Your pending order(s) have been triggered"
-          });
+          if (tradeConfirmations) {
+            toast({ 
+              title: `${response.executed} order${response.executed > 1 ? 's' : ''} executed`,
+              description: "Your pending order(s) have been triggered"
+            });
+          }
         }
         
         if (response.closed > 0) {
           refetchTrades();
           refreshUser();
           playTradeSound();
-          const exitReasons = response.closedTrades?.map((t) => {
-            if (t.orderType === "trailing_stop") return "Trailing Stop";
-            if (t.takeProfitPrice && t.exitPrice && t.exitPrice >= t.takeProfitPrice) return "Take Profit";
-            if (t.stopLossPrice) return "Stop Loss";
-            return "Auto-close";
-          });
-          toast({ 
-            title: `${response.closed} trade${response.closed > 1 ? 's' : ''} closed`,
-            description: exitReasons?.join(", ") || "Exit conditions met"
-          });
+          if (tradeConfirmations) {
+            const exitReasons = response.closedTrades?.map((t) => {
+              if (t.orderType === "trailing_stop") return "Trailing Stop";
+              if (t.takeProfitPrice && t.exitPrice && t.exitPrice >= t.takeProfitPrice) return "Take Profit";
+              if (t.stopLossPrice) return "Stop Loss";
+              return "Auto-close";
+            });
+            toast({ 
+              title: `${response.closed} trade${response.closed > 1 ? 's' : ''} closed`,
+              description: exitReasons?.join(", ") || "Exit conditions met"
+            });
+          }
         }
       } catch (error) {
         // Silently fail - this runs in background

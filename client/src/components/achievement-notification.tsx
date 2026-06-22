@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
+import { useNotifPref } from "@/lib/notif-prefs";
 import { playAchievementSound } from "@/lib/sounds";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -107,6 +108,7 @@ function AchievementPopup({ achievement, onClose }: NotificationProps) {
 
 export function AchievementNotificationProvider() {
   const { user } = useAuth();
+  const achievementsEnabled = useNotifPref("achievements");
   const [notifications, setNotifications] = useState<Achievement[]>([]);
   const seenRef = useRef<Set<string>>(new Set());
   const lastUserIdRef = useRef<string | null>(null);
@@ -140,12 +142,13 @@ export function AchievementNotificationProvider() {
     if (newlyUnlocked.length > 0) {
       newlyUnlocked.forEach(a => seenRef.current.add(a.id));
       saveSeenAchievements(userId, seenRef.current);
-      
-      playAchievementSound();
-      
-      setNotifications(prev => [...prev, ...newlyUnlocked]);
+
+      if (achievementsEnabled) {
+        playAchievementSound();
+        setNotifications(prev => [...prev, ...newlyUnlocked]);
+      }
     }
-  }, [achievements, user]);
+  }, [achievements, user, achievementsEnabled]);
 
   const handleClose = (id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
