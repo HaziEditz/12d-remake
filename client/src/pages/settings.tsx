@@ -14,7 +14,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { User, KeyRound, ArrowLeft, Save, Loader2, Volume2, VolumeX, Trash2, BarChart2, Bell } from "lucide-react";
+import { User, KeyRound, ArrowLeft, Save, Loader2, Volume2, VolumeX, Trash2, BarChart2, Bell, ShieldCheck } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import {
   AlertDialog,
@@ -95,6 +95,38 @@ export default function SettingsPage() {
     const updated = { ...notifPrefs, [key]: value };
     setNotifPrefs(updated);
     notifMutation.mutate(updated);
+  };
+
+  const defaultPrivacy = {
+    hideFromLeaderboard: false,
+    privateProfile: false,
+    privateTradeHistory: false,
+    privatePnl: false,
+  };
+  const userPrivacy = (user as any)?.privacySettings as Record<string, boolean> | null;
+  const [privacySettings, setPrivacySettings] = useState<Record<string, boolean>>({
+    ...defaultPrivacy,
+    ...(userPrivacy || {}),
+  });
+
+  const privacyMutation = useMutation({
+    mutationFn: async (settings: Record<string, boolean>) => {
+      const response = await apiRequest("PATCH", "/api/user/privacy", settings);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Privacy updated", description: "Your privacy settings have been saved." });
+      refreshUser();
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to save privacy settings", variant: "destructive" });
+    },
+  });
+
+  const handlePrivacyToggle = (key: string, value: boolean) => {
+    const updated = { ...privacySettings, [key]: value };
+    setPrivacySettings(updated);
+    privacyMutation.mutate(updated);
   };
 
   const [defaultSymbol, setDefaultSymbolState] = useState(
@@ -534,6 +566,56 @@ export default function SettingsPage() {
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5" />
+              Privacy
+            </CardTitle>
+            <CardDescription>
+              Control what others can see about you
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {[
+              {
+                key: "hideFromLeaderboard",
+                label: "Hide from Leaderboard",
+                description: "Your name won't appear on any public leaderboard",
+              },
+              {
+                key: "privateProfile",
+                label: "Private Profile",
+                description: "Only people you're friends with can view your profile",
+              },
+              {
+                key: "privateTradeHistory",
+                label: "Private Trade History",
+                description: "Hide your past trades from your public profile",
+              },
+              {
+                key: "privatePnl",
+                label: "Hide P&L Stats",
+                description: "Keep your profit & loss figures private",
+              },
+            ].map(({ key, label, description }) => (
+              <div key={key} className="flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <Label htmlFor={`privacy-${key}`}>{label}</Label>
+                  <p className="text-sm text-muted-foreground">{description}</p>
+                </div>
+                <Switch
+                  id={`privacy-${key}`}
+                  checked={privacySettings[key] ?? false}
+                  onCheckedChange={(val) => handlePrivacyToggle(key, val)}
+                  disabled={privacyMutation.isPending}
+                  data-testid={`switch-privacy-${key}`}
+                />
+              </div>
+            ))}
           </CardContent>
         </Card>
 

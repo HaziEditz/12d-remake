@@ -3070,6 +3070,26 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.patch("/api/user/privacy", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const privacySchema = z.object({
+        hideFromLeaderboard: z.boolean().optional(),
+        privateProfile: z.boolean().optional(),
+        privateTradeHistory: z.boolean().optional(),
+        privatePnl: z.boolean().optional(),
+      });
+      const settings = privacySchema.parse(req.body);
+      const fullUser = await storage.getUserById(user.id);
+      const current = (fullUser?.privacySettings as Record<string, boolean>) || {};
+      const merged = { ...current, ...settings };
+      await storage.updateUser(user.id, { privacySettings: merged });
+      res.json({ privacySettings: merged });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
   app.get("/api/users/search", async (req, res) => {
     try {
       const query = req.query.q as string;
@@ -3108,9 +3128,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/users/:id", async (req, res) => {
     try {
+      const viewer = req.user as User | undefined;
       const user = await storage.getUserById(req.params.id);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
+      }
+
+      const priv = user.privacySettings as Record<string, boolean> | null;
+      const isOwner = viewer?.id === user.id;
+
+      if (priv?.privateProfile && !isOwner) {
+        return res.status(403).json({ message: "This profile is private", isPrivate: true });
       }
       
       const publicProfile = {
@@ -3121,7 +3149,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         role: user.role,
         membershipTier: user.membershipTier,
         lessonsCompleted: user.lessonsCompleted,
-        totalProfit: user.totalProfit,
+        totalProfit: priv?.privatePnl && !isOwner ? null : user.totalProfit,
         xp: user.xp,
         lastSeenAt: user.lastSeenAt,
         presenceStatus: user.presenceStatus ?? "offline",
@@ -3138,9 +3166,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/users/:id/trades", async (req, res) => {
     try {
+      const viewer = req.user as User | undefined;
       const user = await storage.getUserById(req.params.id);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
+      }
+      const priv = user.privacySettings as Record<string, boolean> | null;
+      const isOwner = viewer?.id === user.id;
+      if (priv?.privateTradeHistory && !isOwner) {
+        return res.json([]);
       }
       const allTrades = await storage.getTradesByUser(req.params.id);
       const recent = allTrades

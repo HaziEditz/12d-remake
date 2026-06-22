@@ -408,7 +408,11 @@ export class DatabaseStorage implements IStorage {
       friendIds.push(userId); // Include self in friends leaderboard
       return db.select().from(users).where(sql`${users.id} IN ${friendIds}`).orderBy(desc(users.totalProfit));
     }
-    return db.select().from(users).orderBy(desc(users.totalProfit)).limit(50);
+    const all = await db.select().from(users).orderBy(desc(users.totalProfit)).limit(100);
+    return all.filter(u => {
+      const priv = u.privacySettings as Record<string, boolean> | null;
+      return !priv?.hideFromLeaderboard;
+    }).slice(0, 50);
   }
 
   async getStudentsByTeacher(teacherId: string): Promise<User[]> {
