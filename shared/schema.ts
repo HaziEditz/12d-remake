@@ -64,7 +64,16 @@ export const lessons = pgTable("lessons", {
   isPublished: boolean("is_published").default(true),
   requiresSimulation: boolean("requires_simulation").default(false),
   prerequisites: jsonb("prerequisites").default([]),
+  simulationChallenge: jsonb("simulation_challenge"),
 });
+
+export type SimulationChallenge = {
+  description: string;
+  startingBalance: number;
+  targetType: "profit_pct" | "profit_amount" | "any_profit" | "complete_trade";
+  targetValue: number;
+  allowedSymbols: string[];
+};
 
 export const lessonProgress = pgTable("lesson_progress", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

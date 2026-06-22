@@ -74,6 +74,11 @@ const lessonSchema = z.object({
   isPublished: z.boolean().default(true),
   requiresSimulation: z.boolean().default(false),
   prerequisites: z.array(z.string()).default([]),
+  simDescription: z.string().default(""),
+  simStartingBalance: z.coerce.number().positive().default(10000),
+  simTargetType: z.enum(["profit_pct", "profit_amount", "any_profit", "complete_trade"]).default("profit_pct"),
+  simTargetValue: z.coerce.number().positive().default(10),
+  simAllowedSymbols: z.string().default(""),
 });
 
 const tipSchema = z.object({
@@ -319,7 +324,7 @@ export default function AdminPage() {
 
   const lessonForm = useForm<LessonFormData>({
     resolver: zodResolver(lessonSchema),
-    defaultValues: { title: "", description: "", content: "", category: "basics", difficulty: "beginner", duration: 10, order: 0, isPublished: true, requiresSimulation: false, prerequisites: [] },
+    defaultValues: { title: "", description: "", content: "", category: "basics", difficulty: "beginner", duration: 10, order: 0, isPublished: true, requiresSimulation: false, prerequisites: [], simDescription: "", simStartingBalance: 10000, simTargetType: "profit_pct", simTargetValue: 10, simAllowedSymbols: "" },
   });
   const tipForm = useForm<TipFormData>({
     resolver: zodResolver(tipSchema),
@@ -478,12 +483,18 @@ export default function AdminPage() {
   const handleSelectLesson = (lesson: Lesson) => {
     setIsCreatingLesson(false);
     setSelectedLesson(lesson);
+    const sc = lesson.simulationChallenge as any;
     lessonForm.reset({
       title: lesson.title, description: lesson.description, content: lesson.content,
       category: lesson.category, difficulty: lesson.difficulty, duration: lesson.duration,
       order: lesson.order, isPublished: lesson.isPublished ?? true,
       requiresSimulation: lesson.requiresSimulation ?? false,
       prerequisites: (lesson.prerequisites as string[]) ?? [],
+      simDescription: sc?.description ?? "",
+      simStartingBalance: sc?.startingBalance ?? 10000,
+      simTargetType: sc?.targetType ?? "profit_pct",
+      simTargetValue: sc?.targetValue ?? 10,
+      simAllowedSymbols: (sc?.allowedSymbols ?? []).join(", "),
     });
   };
   const handleSelectTip = (tip: TradingTip) => {
@@ -505,7 +516,7 @@ export default function AdminPage() {
   const handleCreateNewLesson = () => {
     setSelectedLesson(null);
     setIsCreatingLesson(true);
-    lessonForm.reset({ title: "", description: "", content: "", category: "basics", difficulty: "beginner", duration: 10, order: lessons?.length ?? 0, isPublished: true, requiresSimulation: false, prerequisites: [] });
+    lessonForm.reset({ title: "", description: "", content: "", category: "basics", difficulty: "beginner", duration: 10, order: lessons?.length ?? 0, isPublished: true, requiresSimulation: false, prerequisites: [], simDescription: "", simStartingBalance: 10000, simTargetType: "profit_pct", simTargetValue: 10, simAllowedSymbols: "" });
   };
   const handleCreateNewTip = () => {
     setSelectedTip(null);
@@ -524,8 +535,19 @@ export default function AdminPage() {
   };
 
   const onSubmitLesson = (data: LessonFormData) => {
-    if (selectedLesson && !isCreatingLesson) updateLessonMutation.mutate({ id: selectedLesson.id, data });
-    else createLessonMutation.mutate(data);
+    const { simDescription, simStartingBalance, simTargetType, simTargetValue, simAllowedSymbols, ...rest } = data;
+    const payload: any = {
+      ...rest,
+      simulationChallenge: rest.requiresSimulation ? {
+        description: simDescription || "",
+        startingBalance: simStartingBalance,
+        targetType: simTargetType,
+        targetValue: simTargetValue,
+        allowedSymbols: simAllowedSymbols ? simAllowedSymbols.split(",").map((s: string) => s.trim()).filter(Boolean) : [],
+      } : null,
+    };
+    if (selectedLesson && !isCreatingLesson) updateLessonMutation.mutate({ id: selectedLesson.id, data: payload });
+    else createLessonMutation.mutate(payload);
   };
   const onSubmitTip = (data: TipFormData) => {
     if (selectedTip && !isCreatingTip) updateTipMutation.mutate({ id: selectedTip.id, data });
@@ -780,11 +802,68 @@ export default function AdminPage() {
                             <BarChart3 className="h-4 w-4 text-blue-500" />
                             Requires Simulator Practice
                           </FormLabel>
-                          <p className="text-xs text-muted-foreground mt-0.5">Students will see a prompt to practice in the simulator before completing this lesson</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">Embed a simulation challenge students must pass to complete this lesson</p>
                         </div>
                         <FormControl><Switch checked={field.value ?? false} onCheckedChange={field.onChange} /></FormControl>
                       </FormItem>
                     )} />
+
+                    {/* Simulation challenge config — shown when requiresSimulation is on */}
+                    {lessonForm.watch("requiresSimulation") && (
+                      <div className="rounded-lg border border-blue-200/60 dark:border-blue-800/60 overflow-hidden">
+                        <div className="px-4 py-2.5 bg-blue-50/60 dark:bg-blue-950/30 border-b border-blue-200/50 dark:border-blue-800/50">
+                          <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
+                            <BarChart3 className="h-3.5 w-3.5" /> Challenge Settings
+                          </p>
+                        </div>
+                        <div className="p-4 space-y-3">
+                          <FormField control={lessonForm.control} name="simDescription" render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Challenge Description</FormLabel>
+                              <FormControl><Input {...field} placeholder="e.g. Buy AAPL and close at a profit" className="h-9 text-sm" /></FormControl>
+                            </FormItem>
+                          )} />
+                          <div className="grid grid-cols-2 gap-3">
+                            <FormField control={lessonForm.control} name="simStartingBalance" render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs">Starting Balance ($)</FormLabel>
+                                <FormControl><Input {...field} type="number" min={100} step={500} className="h-9 text-sm" /></FormControl>
+                              </FormItem>
+                            )} />
+                            <FormField control={lessonForm.control} name="simTargetType" render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs">Target Type</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl><SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger></FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="profit_pct">Profit % (e.g. 10%)</SelectItem>
+                                    <SelectItem value="profit_amount">Profit Amount ($)</SelectItem>
+                                    <SelectItem value="any_profit">Any Profitable Trade</SelectItem>
+                                    <SelectItem value="complete_trade">Complete Any Trade</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </FormItem>
+                            )} />
+                          </div>
+                          {(lessonForm.watch("simTargetType") === "profit_pct" || lessonForm.watch("simTargetType") === "profit_amount") && (
+                            <FormField control={lessonForm.control} name="simTargetValue" render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs">
+                                  Target Value {lessonForm.watch("simTargetType") === "profit_pct" ? "(%)" : "($)"}
+                                </FormLabel>
+                                <FormControl><Input {...field} type="number" min={1} className="h-9 text-sm" /></FormControl>
+                              </FormItem>
+                            )} />
+                          )}
+                          <FormField control={lessonForm.control} name="simAllowedSymbols" render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Allowed Symbols <span className="text-muted-foreground font-normal">(comma-separated, leave blank for all)</span></FormLabel>
+                              <FormControl><Input {...field} placeholder="e.g. AAPL, MSFT, BTC" className="h-9 text-sm" /></FormControl>
+                            </FormItem>
+                          )} />
+                        </div>
+                      </div>
+                    )}
 
                     {/* Prerequisites section */}
                     <FormField control={lessonForm.control} name="prerequisites" render={({ field }) => {

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, KeyboardEvent, useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Terminal, ChevronUp } from "lucide-react";
+import { useLocation } from "wouter";
 
 interface LogEntry {
   type: "input" | "output" | "error" | "system";
@@ -15,6 +16,8 @@ const DEFAULT_X = 16;
 const DEFAULT_Y_OFFSET = 60; // px above bottom
 
 function AdminConsole() {
+  const [location] = useLocation();
+  const onAdminPage = location.startsWith("/admin");
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [input, setInput] = useState("");
@@ -152,7 +155,7 @@ function AdminConsole() {
         data-testid="admin-console-toggle"
         onClick={isOpen ? handleClose : handleOpen}
         title="Admin Console"
-        className={`fixed bottom-4 left-4 z-[49] flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-mono font-semibold shadow-lg border transition-all duration-200 ${
+        className={`fixed bottom-4 z-[49] flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-mono font-semibold shadow-lg border transition-all duration-200 ${onAdminPage ? "left-60" : "left-4"} ${
           isOpen
             ? "bg-emerald-500/20 border-emerald-500/60 text-emerald-400 hover:bg-emerald-500/30"
             : "bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-emerald-500/50 hover:text-emerald-400"

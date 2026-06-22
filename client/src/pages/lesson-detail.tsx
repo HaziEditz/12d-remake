@@ -30,6 +30,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { EnhancedQuizSection } from "@/components/enhanced-quiz";
 import { LessonCompletionModal, type CompletionResult } from "@/components/lesson-completion-modal";
+import { LessonSimulator } from "@/components/lesson-simulator";
+import type { SimulationChallenge } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 
 function NotesPanel({ lessonId, onClose }: { lessonId: string; onClose: () => void }) {
@@ -455,7 +457,13 @@ export default function LessonDetailPage() {
             </div>
           )}
 
-          {lesson.requiresSimulation && (
+          {lesson.requiresSimulation && (lesson.simulationChallenge as SimulationChallenge | null) ? (
+            <LessonSimulator
+              challenge={lesson.simulationChallenge as SimulationChallenge}
+              isCompleted={isCompleted}
+              onPassed={() => { if (!isCompleted) markCompleteMutation.mutate(); }}
+            />
+          ) : lesson.requiresSimulation ? (
             <div className="mb-6 p-4 rounded-xl border border-blue-200/60 dark:border-blue-800/60 bg-blue-50/50 dark:bg-blue-950/20 flex items-start gap-3">
               <div className="h-9 w-9 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0 mt-0.5">
                 <BarChart3 className="h-4.5 w-4.5 text-blue-500" />
@@ -469,7 +477,7 @@ export default function LessonDetailPage() {
                 </p>
               </div>
             </div>
-          )}
+          ) : null}
 
           <EnhancedQuizSection
             lessonId={lesson.id}

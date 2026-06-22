@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -246,21 +247,45 @@ function BadgeTooltip({ achievement, rarity, onClose }: { achievement: Achieveme
 
 function BadgeItem({ achievement, rarity }: { achievement: Achievement; rarity: number }) {
   const [hovered, setHovered] = useState(false);
+  const [coords, setCoords] = useState({ x: 0, y: 0 });
+  const badgeRef = useRef<HTMLDivElement>(null);
   const cfg = CATEGORY_CONFIG[achievement.category] || CATEGORY_CONFIG.milestone;
   const diff = getDifficulty(achievement.xpReward);
   const progress = achievement.progress ?? 0;
   const BADGE_SIZE = 72;
 
+  const handleMouseEnter = useCallback(() => {
+    if (badgeRef.current) {
+      const r = badgeRef.current.getBoundingClientRect();
+      setCoords({ x: r.left + r.width / 2, y: r.top });
+    }
+    setHovered(true);
+  }, []);
+
   return (
     <div
+      ref={badgeRef}
       className="relative flex flex-col items-center gap-2 cursor-pointer group select-none"
       style={{ minWidth: 88 }}
-      onMouseEnter={() => setHovered(true)}
+      onMouseEnter={handleMouseEnter}
       onMouseLeave={() => setHovered(false)}
       data-testid={`badge-achievement-${achievement.id}`}
     >
-      {/* Tooltip */}
-      {hovered && <BadgeTooltip achievement={achievement} rarity={rarity} onClose={() => setHovered(false)} />}
+      {/* Tooltip rendered via portal so overflow-x-auto doesn't clip it */}
+      {hovered && coords.y > 0 && createPortal(
+        <div
+          style={{
+            position: "fixed",
+            bottom: `${window.innerHeight - coords.y + 12}px`,
+            left: `${Math.max(8, Math.min(coords.x - 144, window.innerWidth - 296))}px`,
+            zIndex: 9999,
+          }}
+          onMouseLeave={() => setHovered(false)}
+        >
+          <BadgeTooltip achievement={achievement} rarity={rarity} onClose={() => setHovered(false)} />
+        </div>,
+        document.body
+      )}
 
       {/* Legendary shimmer wrapper */}
       <div
