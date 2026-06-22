@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   BookOpen, Plus, TrendingUp, TrendingDown, Search, Pencil, Trash2,
   Brain, Target, Lightbulb, ChevronDown, ChevronUp, Filter,
-  Download,
+  Download, List, CalendarDays, ChevronLeft, ChevronRight, X,
 } from "lucide-react";
 import type { JournalEntry } from "@shared/schema";
 
@@ -86,6 +86,293 @@ function StatPill({ label, value, sub }: { label: string; value: string; sub?: s
   );
 }
 
+// ─── Calendar Heatmap ────────────────────────────────────────────────────────
+
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTH_NAMES = [
+  "January","February","March","April","May","June",
+  "July","August","September","October","November","December",
+];
+
+type DayData = { pnl: number; entries: JournalEntry[]; count: number };
+
+function dayBg(d: DayData | undefined, today: boolean): string {
+  if (!d || d.count === 0) return today ? "ring-2 ring-primary bg-muted/30" : "bg-muted/20";
+  const abs = Math.abs(d.pnl);
+  // intensity tiers
+  const tier = abs < 50 ? 1 : abs < 200 ? 2 : abs < 500 ? 3 : 4;
+  if (d.pnl > 0) {
+    const shades = ["bg-emerald-500/20","bg-emerald-500/40","bg-emerald-500/60","bg-emerald-500/80"];
+    return shades[tier - 1] + (today ? " ring-2 ring-primary" : "");
+  } else {
+    const shades = ["bg-rose-500/20","bg-rose-500/40","bg-rose-500/60","bg-rose-500/80"];
+    return shades[tier - 1] + (today ? " ring-2 ring-primary" : "");
+  }
+}
+
+function CalendarHeatmap({
+  entries,
+  onOpenCreate,
+  onEdit,
+  onDeleteConfirm,
+}: {
+  entries: JournalEntry[];
+  onOpenCreate: () => void;
+  onEdit: (e: JournalEntry) => void;
+  onDeleteConfirm: (id: string) => void;
+}) {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayDate = new Date();
+
+  const [year, setYear]   = useState(todayDate.getFullYear());
+  const [month, setMonth] = useState(todayDate.getMonth()); // 0-based
+  const [selected, setSelected] = useState<string | null>(null);
+
+  function prevMonth() {
+    if (month === 0) { setYear(y => y - 1); setMonth(11); }
+    else setMonth(m => m - 1);
+    setSelected(null);
+  }
+  function nextMonth() {
+    if (month === 11) { setYear(y => y + 1); setMonth(0); }
+    else setMonth(m => m + 1);
+    setSelected(null);
+  }
+  function goToday() {
+    setYear(todayDate.getFullYear());
+    setMonth(todayDate.getMonth());
+    setSelected(null);
+  }
+
+  // Build day map for the entire dataset (all months)
+  const dayMap = useMemo(() => {
+    const map: Record<string, DayData> = {};
+    for (const e of entries) {
+      const key = e.date.slice(0, 10);
+      if (!map[key]) map[key] = { pnl: 0, entries: [], count: 0 };
+      map[key].pnl   += e.pnl ?? 0;
+      map[key].count += 1;
+      map[key].entries.push(e);
+    }
+    return map;
+  }, [entries]);
+
+  // Build grid for current month
+  const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells: (number | null)[] = [
+    ...Array(firstDay).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+  // pad to full weeks
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  // Monthly stats
+  const monthEntries = entries.filter(e => {
+    const d = new Date(e.date);
+    return d.getFullYear() === year && d.getMonth() === month;
+  });
+  const mPnl   = monthEntries.reduce((s, e) => s + (e.pnl ?? 0), 0);
+  const mWins  = monthEntries.filter(e => (e.pnl ?? 0) > 0).length;
+  const mLoss  = monthEntries.filter(e => (e.pnl ?? 0) < 0).length;
+  // trading days in month
+  const tradingDays = new Set(monthEntries.map(e => e.date.slice(0, 10))).size;
+
+  const selectedEntries = selected ? (dayMap[selected]?.entries ?? []) : [];
+
+  return (
+    <div>
+      {/* Month nav */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={prevMonth} data-testid="button-prev-month">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <h2 className="text-base font-semibold w-40 text-center">
+            {MONTH_NAMES[month]} {year}
+          </h2>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={nextMonth} data-testid="button-next-month">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" className="h-8 text-xs ml-1" onClick={goToday}>
+            Today
+          </Button>
+        </div>
+
+        {/* Monthly summary chips */}
+        <div className="hidden sm:flex items-center gap-2 text-xs">
+          {tradingDays > 0 && (
+            <>
+              <span className="px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                {tradingDays} day{tradingDays !== 1 ? "s" : ""} traded
+              </span>
+              <span className="px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                {mWins}W
+              </span>
+              <span className="px-2 py-1 rounded-full bg-rose-500/10 text-rose-500">
+                {mLoss}L
+              </span>
+              <span className={`px-2 py-1 rounded-full font-semibold ${
+                mPnl >= 0 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                           : "bg-rose-500/10 text-rose-500"
+              }`}>
+                {mPnl >= 0 ? "+" : ""}${mPnl.toFixed(0)}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Calendar grid */}
+      <div className="rounded-xl border overflow-hidden">
+        {/* Day-of-week headers */}
+        <div className="grid grid-cols-7 border-b">
+          {DAY_LABELS.map(d => (
+            <div key={d} className="py-2 text-center text-[11px] font-medium text-muted-foreground">
+              {d}
+            </div>
+          ))}
+        </div>
+
+        {/* Weeks */}
+        {Array.from({ length: cells.length / 7 }, (_, wi) => (
+          <div key={wi} className="grid grid-cols-7">
+            {cells.slice(wi * 7, wi * 7 + 7).map((day, di) => {
+              if (day === null) {
+                return <div key={di} className="aspect-square border-r border-b last:border-r-0 bg-muted/5" />;
+              }
+              const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+              const data = dayMap[dateStr];
+              const isToday = dateStr === todayStr;
+              const isSelected = dateStr === selected;
+              return (
+                <button
+                  key={di}
+                  className={`aspect-square border-r border-b last:border-r-0 flex flex-col items-center justify-center gap-0.5 transition-all hover:opacity-90 relative ${
+                    dayBg(data, isToday)
+                  } ${isSelected ? "ring-2 ring-inset ring-primary/70" : ""}`}
+                  onClick={() => setSelected(isSelected ? null : dateStr)}
+                  data-testid={`day-cell-${dateStr}`}
+                >
+                  <span className={`text-xs font-medium leading-none ${
+                    isToday ? "text-primary font-bold" : data?.count ? "text-foreground" : "text-muted-foreground"
+                  }`}>
+                    {day}
+                  </span>
+                  {data && data.count > 0 && (
+                    <span className={`text-[9px] leading-none font-semibold ${
+                      data.pnl >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-rose-600 dark:text-rose-400"
+                    }`}>
+                      {data.pnl >= 0 ? "+" : ""}${Math.abs(data.pnl) < 1000 ? data.pnl.toFixed(0) : `${(data.pnl / 1000).toFixed(1)}k`}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 mt-3 text-[11px] text-muted-foreground">
+        <span>Less</span>
+        <div className="flex gap-1">
+          {["bg-muted/20","bg-emerald-500/20","bg-emerald-500/40","bg-emerald-500/60","bg-emerald-500/80"].map((c, i) => (
+            <div key={i} className={`w-4 h-4 rounded-sm ${c} border border-border/30`} />
+          ))}
+        </div>
+        <span>More profit</span>
+        <div className="flex gap-1 ml-2">
+          {["bg-rose-500/20","bg-rose-500/40","bg-rose-500/60","bg-rose-500/80"].map((c, i) => (
+            <div key={i} className={`w-4 h-4 rounded-sm ${c} border border-border/30`} />
+          ))}
+        </div>
+        <span>Loss</span>
+      </div>
+
+      {/* Selected day panel */}
+      {selected && (
+        <Card className="mt-4">
+          <CardHeader className="pb-3 flex-row items-center justify-between">
+            <CardTitle className="text-sm">
+              {new Date(selected + "T00:00:00").toLocaleDateString("default", {
+                weekday: "long", month: "long", day: "numeric", year: "numeric"
+              })}
+            </CardTitle>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelected(null)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {selectedEntries.length === 0 ? (
+              <div className="text-center py-6">
+                <p className="text-sm text-muted-foreground mb-3">No entries on this day.</p>
+                <Button size="sm" variant="outline" onClick={onOpenCreate} className="gap-1.5">
+                  <Plus className="h-3.5 w-3.5" /> Log a trade for this day
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {selectedEntries.map(entry => (
+                  <div
+                    key={entry.id}
+                    className="flex items-start gap-3 rounded-lg bg-muted/30 p-3"
+                  >
+                    <div className={`h-8 w-8 rounded-md flex items-center justify-center shrink-0 font-bold text-xs ${
+                      entry.type === "buy"
+                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                        : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                    }`}>
+                      {entry.symbol.slice(0, 3)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-sm">{entry.symbol}</span>
+                        {entry.strategy && <Badge variant="secondary" className="text-xs">{entry.strategy}</Badge>}
+                        {entry.emotions && <span title={entry.emotions}>{EMOJI[entry.emotions] ?? "🧠"}</span>}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {entry.quantity} @ ${Number(entry.entryPrice).toFixed(2)}
+                        {entry.exitPrice != null ? ` → $${Number(entry.exitPrice).toFixed(2)}` : ""}
+                      </p>
+                      {entry.notes && <p className="text-xs mt-1 line-clamp-2">{entry.notes}</p>}
+                    </div>
+                    <div className="shrink-0 text-right">
+                      {entry.pnl != null && (
+                        <p className={`text-sm font-bold ${pnlColor(entry.pnl)}`}>
+                          {entry.pnl >= 0 ? "+" : ""}${Number(entry.pnl).toFixed(2)}
+                        </p>
+                      )}
+                      <div className="flex gap-1 mt-1">
+                        <Button size="icon" variant="ghost" className="h-6 w-6"
+                          onClick={() => onEdit(entry)} data-testid={`button-cal-edit-${entry.id}`}>
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive"
+                          onClick={() => onDeleteConfirm(entry.id)} data-testid={`button-cal-delete-${entry.id}`}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {/* Day summary */}
+                {selectedEntries.length > 1 && (
+                  <div className={`text-right text-sm font-semibold pt-1 ${pnlColor(dayMap[selected]?.pnl)}`}>
+                    Day total: {(dayMap[selected]?.pnl ?? 0) >= 0 ? "+" : ""}${(dayMap[selected]?.pnl ?? 0).toFixed(2)}
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function TradeJournalPage() {
   return (
     <PremiumPaywall featureName="Trade Journal">
@@ -98,6 +385,7 @@ function JournalContent() {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  const [view, setView]                   = useState<"list" | "calendar">("list");
   const [search, setSearch]               = useState("");
   const [filterStrategy, setFilterStrategy] = useState("all");
   const [filterType, setFilterType]       = useState("all");
@@ -241,7 +529,7 @@ function JournalContent() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2" data-testid="text-journal-title">
             <BookOpen className="h-6 w-6 text-primary" />
@@ -251,10 +539,33 @@ function JournalContent() {
             Annotate your trades, track emotions, and learn from every decision
           </p>
         </div>
-        <Button onClick={openCreate} className="gap-2" data-testid="button-add-entry">
-          <Plus className="h-4 w-4" />
-          New Entry
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* View toggle */}
+          <div className="flex items-center rounded-lg border p-0.5 bg-muted/40">
+            <button
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                view === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+              onClick={() => setView("list")}
+              data-testid="button-view-list"
+            >
+              <List className="h-3.5 w-3.5" /> List
+            </button>
+            <button
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                view === "calendar" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+              onClick={() => setView("calendar")}
+              data-testid="button-view-calendar"
+            >
+              <CalendarDays className="h-3.5 w-3.5" /> Calendar
+            </button>
+          </div>
+          <Button onClick={openCreate} className="gap-2" data-testid="button-add-entry">
+            <Plus className="h-4 w-4" />
+            New Entry
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -268,8 +579,8 @@ function JournalContent() {
         </div>
       )}
 
-      {/* Filters (only when there are entries) */}
-      {entries.length > 0 && (
+      {/* Filters (only in list view when there are entries) */}
+      {view === "list" && entries.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-5">
           <div className="relative flex-1 min-w-[160px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -304,222 +615,218 @@ function JournalContent() {
         </div>
       )}
 
-      {/* Entry list */}
-      {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}
-        </div>
-      ) : entries.length === 0 ? (
-        <div className="text-center py-20">
-          <BookOpen className="h-14 w-14 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No journal entries yet</h3>
-          <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
-            Start logging your trades to spot patterns, track your mindset, and improve over time.
-          </p>
-          <Button onClick={openCreate} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add Your First Entry
-          </Button>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <Search className="h-10 w-10 mx-auto mb-3 opacity-40" />
-          <p>No entries match your filters.</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map(entry => {
-            const isExpanded = expandedId === entry.id;
-            const pnl = entry.pnl;
-            return (
-              <Card
-                key={entry.id}
-                className="hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => setExpandedId(isExpanded ? null : entry.id)}
-                data-testid={`card-entry-${entry.id}`}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    {/* Symbol icon */}
-                    <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 font-bold text-sm ${
-                      entry.type === "buy"
-                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                        : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
-                    }`}>
-                      {entry.symbol.slice(0, 3)}
-                    </div>
+      {/* ── Calendar view ─────────────────────────── */}
+      {view === "calendar" && (
+        isLoading ? (
+          <div className="space-y-3">
+            {[1,2,3].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}
+          </div>
+        ) : (
+          <CalendarHeatmap
+            entries={entries}
+            onOpenCreate={openCreate}
+            onEdit={openEdit}
+            onDeleteConfirm={setDeleteConfirm}
+          />
+        )
+      )}
 
-                    {/* Main info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold">{entry.symbol}</span>
-                        <Badge variant="outline" className={`text-xs capitalize ${
+      {/* ── List view ─────────────────────────────── */}
+      {view === "list" && (
+        <>
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}
+            </div>
+          ) : entries.length === 0 ? (
+            <div className="text-center py-20">
+              <BookOpen className="h-14 w-14 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No journal entries yet</h3>
+              <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
+                Start logging your trades to spot patterns, track your mindset, and improve over time.
+              </p>
+              <Button onClick={openCreate} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Your First Entry
+              </Button>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground">
+              <Search className="h-10 w-10 mx-auto mb-3 opacity-40" />
+              <p>No entries match your filters.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filtered.map(entry => {
+                const isExpanded = expandedId === entry.id;
+                const pnl = entry.pnl;
+                return (
+                  <Card
+                    key={entry.id}
+                    className="hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => setExpandedId(isExpanded ? null : entry.id)}
+                    data-testid={`card-entry-${entry.id}`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 font-bold text-sm ${
                           entry.type === "buy"
-                            ? "border-emerald-500/50 text-emerald-600 dark:text-emerald-400"
-                            : "border-rose-500/50 text-rose-500"
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                            : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
                         }`}>
-                          {entry.type === "buy" ? <TrendingUp className="h-3 w-3 mr-1" /> : <TrendingDown className="h-3 w-3 mr-1" />}
-                          {entry.type}
-                        </Badge>
-                        {entry.strategy && (
-                          <Badge variant="secondary" className="text-xs">{entry.strategy}</Badge>
-                        )}
-                        {entry.emotions && (
-                          <span className="text-base" title={entry.emotions}>
-                            {EMOJI[entry.emotions] ?? "🧠"}
-                          </span>
-                        )}
+                          {entry.symbol.slice(0, 3)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold">{entry.symbol}</span>
+                            <Badge variant="outline" className={`text-xs capitalize ${
+                              entry.type === "buy"
+                                ? "border-emerald-500/50 text-emerald-600 dark:text-emerald-400"
+                                : "border-rose-500/50 text-rose-500"
+                            }`}>
+                              {entry.type === "buy" ? <TrendingUp className="h-3 w-3 mr-1" /> : <TrendingDown className="h-3 w-3 mr-1" />}
+                              {entry.type}
+                            </Badge>
+                            {entry.strategy && <Badge variant="secondary" className="text-xs">{entry.strategy}</Badge>}
+                            {entry.emotions && (
+                              <span className="text-base" title={entry.emotions}>{EMOJI[entry.emotions] ?? "🧠"}</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {new Date(entry.date).toLocaleDateString("default", { month: "short", day: "numeric", year: "numeric" })}
+                            {" · "}{entry.quantity} units @ ${Number(entry.entryPrice).toFixed(2)}
+                            {entry.exitPrice != null ? ` → $${Number(entry.exitPrice).toFixed(2)}` : ""}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          {pnl != null && (
+                            <div className="text-right">
+                              <p className={`text-sm font-bold ${pnlColor(pnl)}`}>
+                                {pnl >= 0 ? "+" : ""}${Number(pnl).toFixed(2)}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground">P&L</p>
+                            </div>
+                          )}
+                          {isExpanded
+                            ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                            : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                        </div>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {new Date(entry.date).toLocaleDateString("default", { month: "short", day: "numeric", year: "numeric" })}
-                        {" · "}{entry.quantity} units @ ${Number(entry.entryPrice).toFixed(2)}
-                        {entry.exitPrice != null ? ` → $${Number(entry.exitPrice).toFixed(2)}` : ""}
-                      </p>
-                    </div>
 
-                    {/* P&L + chevron */}
-                    <div className="flex items-center gap-3 shrink-0">
-                      {pnl != null && (
-                        <div className="text-right">
-                          <p className={`text-sm font-bold ${pnlColor(pnl)}`}>
-                            {pnl >= 0 ? "+" : ""}${Number(pnl).toFixed(2)}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground">P&L</p>
+                      {!isExpanded && entry.notes && (
+                        <p className="text-xs text-muted-foreground mt-2 line-clamp-1 pl-[52px]">{entry.notes}</p>
+                      )}
+
+                      {isExpanded && (
+                        <div className="mt-4 pl-[52px] space-y-4" onClick={e => e.stopPropagation()}>
+                          {entry.notes && (
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 mb-1.5">
+                                <Brain className="h-3.5 w-3.5" /> Trade Notes
+                              </p>
+                              <p className="text-sm whitespace-pre-wrap">{entry.notes}</p>
+                            </div>
+                          )}
+                          {entry.emotions && (
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 mb-1.5">
+                                <span className="text-sm">{EMOJI[entry.emotions] ?? "🧠"}</span> Emotional State
+                              </p>
+                              <p className="text-sm">{entry.emotions}</p>
+                            </div>
+                          )}
+                          {entry.lessons && (
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 mb-1.5">
+                                <Lightbulb className="h-3.5 w-3.5 text-yellow-500" /> Lessons Learned
+                              </p>
+                              <p className="text-sm whitespace-pre-wrap">{entry.lessons}</p>
+                            </div>
+                          )}
+                          <div className="flex gap-2 pt-1">
+                            <Button size="sm" variant="outline" className="gap-1.5 h-8"
+                              onClick={() => openEdit(entry)} data-testid={`button-edit-${entry.id}`}>
+                              <Pencil className="h-3.5 w-3.5" /> Edit
+                            </Button>
+                            <Button size="sm" variant="outline"
+                              className="gap-1.5 h-8 text-destructive hover:text-destructive"
+                              onClick={() => setDeleteConfirm(entry.id)} data-testid={`button-delete-${entry.id}`}>
+                              <Trash2 className="h-3.5 w-3.5" /> Delete
+                            </Button>
+                          </div>
                         </div>
                       )}
-                      {isExpanded
-                        ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                        : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-                    </div>
-                  </div>
-
-                  {/* Preview note */}
-                  {!isExpanded && entry.notes && (
-                    <p className="text-xs text-muted-foreground mt-2 line-clamp-1 pl-[52px]">
-                      {entry.notes}
-                    </p>
-                  )}
-
-                  {/* Expanded detail */}
-                  {isExpanded && (
-                    <div
-                      className="mt-4 pl-[52px] space-y-4"
-                      onClick={e => e.stopPropagation()}
-                    >
-                      {entry.notes && (
-                        <div>
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 mb-1.5">
-                            <Brain className="h-3.5 w-3.5" /> Trade Notes
-                          </p>
-                          <p className="text-sm whitespace-pre-wrap">{entry.notes}</p>
-                        </div>
-                      )}
-                      {entry.emotions && (
-                        <div>
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 mb-1.5">
-                            <span className="text-sm">{EMOJI[entry.emotions] ?? "🧠"}</span> Emotional State
-                          </p>
-                          <p className="text-sm">{entry.emotions}</p>
-                        </div>
-                      )}
-                      {entry.lessons && (
-                        <div>
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 mb-1.5">
-                            <Lightbulb className="h-3.5 w-3.5 text-yellow-500" /> Lessons Learned
-                          </p>
-                          <p className="text-sm whitespace-pre-wrap">{entry.lessons}</p>
-                        </div>
-                      )}
-                      <div className="flex gap-2 pt-1">
-                        <Button
-                          size="sm" variant="outline" className="gap-1.5 h-8"
-                          onClick={() => openEdit(entry)}
-                          data-testid={`button-edit-${entry.id}`}
-                        >
-                          <Pencil className="h-3.5 w-3.5" /> Edit
-                        </Button>
-                        <Button
-                          size="sm" variant="outline"
-                          className="gap-1.5 h-8 text-destructive hover:text-destructive"
-                          onClick={() => setDeleteConfirm(entry.id)}
-                          data-testid={`button-delete-${entry.id}`}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" /> Delete
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Strategy breakdown */}
-      {strategies.length >= 2 && (
-        <Card className="mt-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Target className="h-4 w-4" /> Strategy Breakdown
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2.5">
-              {strategies.map(s => {
-                const group = entries.filter(e => e.strategy === s);
-                const gWins = group.filter(e => (e.pnl ?? 0) > 0).length;
-                const gPnl  = group.reduce((sum, e) => sum + (e.pnl ?? 0), 0);
-                const gRate = Math.round((gWins / group.length) * 100);
-                return (
-                  <div key={s} className="flex items-center gap-3">
-                    <span className="text-sm font-medium w-40 truncate">{s}</span>
-                    <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
-                      <div
-                        className={`h-2 rounded-full transition-all ${gPnl >= 0 ? "bg-emerald-500" : "bg-rose-500"}`}
-                        style={{ width: `${gRate}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-muted-foreground w-14 text-right">{gRate}% win</span>
-                    <span className={`text-xs font-semibold w-16 text-right ${pnlColor(gPnl)}`}>
-                      {gPnl >= 0 ? "+" : ""}${Math.abs(gPnl).toFixed(0)}
-                    </span>
-                  </div>
+                    </CardContent>
+                  </Card>
                 );
               })}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
 
-      {/* Emotion summary */}
-      {entries.some(e => e.emotions) && (
-        <Card className="mt-4">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Brain className="h-4 w-4" /> Emotion vs. Performance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {EMOTION_OPTS.filter(opt => entries.some(e => e.emotions === opt.label)).map(opt => {
-                const group = entries.filter(e => e.emotions === opt.label);
-                const gPnl  = group.reduce((s, e) => s + (e.pnl ?? 0), 0);
-                const gWins = group.filter(e => (e.pnl ?? 0) > 0).length;
-                return (
-                  <div key={opt.label} className="rounded-xl bg-muted/40 p-3 text-center">
-                    <span className="text-2xl">{opt.emoji}</span>
-                    <p className="text-xs font-medium mt-1 truncate">{opt.label}</p>
-                    <p className={`text-sm font-bold mt-0.5 ${pnlColor(gPnl)}`}>
-                      {gPnl >= 0 ? "+" : ""}${Math.abs(gPnl).toFixed(0)}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">{group.length} trade{group.length !== 1 ? "s" : ""} · {gWins}W</p>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+          {/* Strategy breakdown */}
+          {strategies.length >= 2 && (
+            <Card className="mt-6">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Target className="h-4 w-4" /> Strategy Breakdown
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2.5">
+                  {strategies.map(s => {
+                    const group = entries.filter(e => e.strategy === s);
+                    const gWins = group.filter(e => (e.pnl ?? 0) > 0).length;
+                    const gPnl  = group.reduce((sum, e) => sum + (e.pnl ?? 0), 0);
+                    const gRate = Math.round((gWins / group.length) * 100);
+                    return (
+                      <div key={s} className="flex items-center gap-3">
+                        <span className="text-sm font-medium w-40 truncate">{s}</span>
+                        <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
+                          <div className={`h-2 rounded-full transition-all ${gPnl >= 0 ? "bg-emerald-500" : "bg-rose-500"}`}
+                            style={{ width: `${gRate}%` }} />
+                        </div>
+                        <span className="text-xs text-muted-foreground w-14 text-right">{gRate}% win</span>
+                        <span className={`text-xs font-semibold w-16 text-right ${pnlColor(gPnl)}`}>
+                          {gPnl >= 0 ? "+" : ""}${Math.abs(gPnl).toFixed(0)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Emotion vs Performance */}
+          {entries.some(e => e.emotions) && (
+            <Card className="mt-4">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Brain className="h-4 w-4" /> Emotion vs. Performance
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {EMOTION_OPTS.filter(opt => entries.some(e => e.emotions === opt.label)).map(opt => {
+                    const group = entries.filter(e => e.emotions === opt.label);
+                    const gPnl  = group.reduce((s, e) => s + (e.pnl ?? 0), 0);
+                    const gWins = group.filter(e => (e.pnl ?? 0) > 0).length;
+                    return (
+                      <div key={opt.label} className="rounded-xl bg-muted/40 p-3 text-center">
+                        <span className="text-2xl">{opt.emoji}</span>
+                        <p className="text-xs font-medium mt-1 truncate">{opt.label}</p>
+                        <p className={`text-sm font-bold mt-0.5 ${pnlColor(gPnl)}`}>
+                          {gPnl >= 0 ? "+" : ""}${Math.abs(gPnl).toFixed(0)}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">{group.length} trade{group.length !== 1 ? "s" : ""} · {gWins}W</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
 
       {/* Create / Edit Dialog */}
