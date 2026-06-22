@@ -4884,8 +4884,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
     try {
       if (cmd === "give") {
-        const [, playerName, rawAmount] = parts;
-        if (!playerName || !rawAmount) return res.json({ output: "Usage: /give <player> <amount>", success: false });
+        const rawAmount = parts[parts.length - 1];
+        const playerName = parts.slice(1, parts.length - 1).join(" ");
+        if (!playerName || !rawAmount || parts.length < 3) return res.json({ output: "Usage: /give <player name> <amount>", success: false });
         const amount = parseFloat(rawAmount);
         if (isNaN(amount) || amount <= 0) return res.json({ output: "Amount must be a positive number.", success: false });
         const target = await findPlayer(playerName);
@@ -4895,8 +4896,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.json({ output: `✓ Gave $${amount.toLocaleString()} to ${target.displayName}. New balance: $${newBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, success: true });
 
       } else if (cmd === "take") {
-        const [, playerName, rawAmount] = parts;
-        if (!playerName || !rawAmount) return res.json({ output: "Usage: /take <player> <amount>", success: false });
+        const rawAmount = parts[parts.length - 1];
+        const playerName = parts.slice(1, parts.length - 1).join(" ");
+        if (!playerName || !rawAmount || parts.length < 3) return res.json({ output: "Usage: /take <player name> <amount>", success: false });
         const amount = parseFloat(rawAmount);
         if (isNaN(amount) || amount <= 0) return res.json({ output: "Amount must be a positive number.", success: false });
         const target = await findPlayer(playerName);
@@ -4906,8 +4908,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.json({ output: `✓ Took $${amount.toLocaleString()} from ${target.displayName}. New balance: $${newBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, success: true });
 
       } else if (cmd === "freeze") {
-        const [, playerName] = parts;
-        if (!playerName) return res.json({ output: "Usage: /freeze <player>", success: false });
+        const playerName = parts.slice(1).join(" ");
+        if (!playerName) return res.json({ output: "Usage: /freeze <player name>", success: false });
         const target = await findPlayer(playerName);
         if (!target) return res.json({ output: `Player "${playerName}" not found.`, success: false });
         if (target.isFrozen) return res.json({ output: `${target.displayName} is already frozen. Use /unfreeze to lift the freeze.`, success: false });
@@ -4915,16 +4917,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.json({ output: `✓ ${target.displayName}'s trading account has been frozen.`, success: true });
 
       } else if (cmd === "unfreeze") {
-        const [, playerName] = parts;
-        if (!playerName) return res.json({ output: "Usage: /unfreeze <player>", success: false });
+        const playerName = parts.slice(1).join(" ");
+        if (!playerName) return res.json({ output: "Usage: /unfreeze <player name>", success: false });
         const target = await findPlayer(playerName);
         if (!target) return res.json({ output: `Player "${playerName}" not found.`, success: false });
         await storage.updateUser(target.id, { isFrozen: false });
         return res.json({ output: `✓ ${target.displayName}'s account has been unfrozen. Trading resumed.`, success: true });
 
       } else if (cmd === "reset") {
-        const [, playerName] = parts;
-        if (!playerName) return res.json({ output: "Usage: /reset <player>", success: false });
+        const playerName = parts.slice(1).join(" ");
+        if (!playerName) return res.json({ output: "Usage: /reset <player name>", success: false });
         const target = await findPlayer(playerName);
         if (!target) return res.json({ output: `Player "${playerName}" not found.`, success: false });
         await storage.resetUserBalance(target.id, 5000);
@@ -4932,8 +4934,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.json({ output: `✓ ${target.displayName}'s portfolio has been wiped. Balance reset to $5,000.00.`, success: true });
 
       } else if (cmd === "assets") {
-        const [, playerName] = parts;
-        if (!playerName) return res.json({ output: "Usage: /assets <player>", success: false });
+        const playerName = parts.slice(1).join(" ");
+        if (!playerName) return res.json({ output: "Usage: /assets <player name>", success: false });
         const target = await findPlayer(playerName);
         if (!target) return res.json({ output: `Player "${playerName}" not found.`, success: false });
         const items = await storage.getPortfolioItems(target.id);
