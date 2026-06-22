@@ -30,18 +30,6 @@ import {
 import { isSoundEnabled, setSoundEnabled, playNotificationSound } from "@/lib/sounds";
 import { AvatarUploader } from "@/components/AvatarUploader";
 
-const profileSchema = z.object({
-  displayName: z.string().min(2, "Display name must be at least 2 characters"),
-  username: z.string()
-    .min(3, "Username must be at least 3 characters")
-    .max(20, "Username must be at most 20 characters")
-    .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers and underscores")
-    .optional()
-    .or(z.literal("")),
-  bio: z.string().max(500, "Bio must be less than 500 characters").optional(),
-  avatarUrl: z.string().optional().or(z.literal("")),
-});
-
 const passwordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
   newPassword: z.string().min(6, "New password must be at least 6 characters"),
@@ -51,7 +39,6 @@ const passwordSchema = z.object({
   path: ["confirmPassword"],
 });
 
-type ProfileFormValues = z.infer<typeof profileSchema>;
 type PasswordFormValues = z.infer<typeof passwordSchema>;
 
 export default function SettingsPage() {
@@ -169,15 +156,13 @@ export default function SettingsPage() {
     }
   };
 
-  const profileForm = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileSchema),
-    defaultValues: {
-      displayName: user?.displayName ?? "",
-      username: user?.username ?? "",
-      bio: (user as any)?.bio ?? "",
-      avatarUrl: user?.avatarUrl ?? "",
-    },
+  const [profileFields, setProfileFields] = useState({
+    displayName: user?.displayName ?? "",
+    username: (user as any)?.username ?? "",
+    bio: (user as any)?.bio ?? "",
+    avatarUrl: user?.avatarUrl ?? "",
   });
+  const [profileErrors, setProfileErrors] = useState<Record<string, string>>({});
 
   const passwordForm = useForm<PasswordFormValues>({
     resolver: zodResolver(passwordSchema),
@@ -189,12 +174,12 @@ export default function SettingsPage() {
   });
 
   const profileMutation = useMutation({
-    mutationFn: async (data: ProfileFormValues) => {
+    mutationFn: async () => {
       const payload = {
-        displayName: data.displayName,
-        username: data.username || null,
-        bio: data.bio || null,
-        avatarUrl: data.avatarUrl || null,
+        displayName: profileFields.displayName,
+        username: profileFields.username || null,
+        bio: profileFields.bio || null,
+        avatarUrl: profileFields.avatarUrl || null,
       };
       const response = await apiRequest("PATCH", "/api/user/profile", payload);
       return response.json();
@@ -253,7 +238,7 @@ export default function SettingsPage() {
     if (!user) {
       navigate("/login");
     } else {
-      profileForm.reset({
+      setProfileFields({
         displayName: user.displayName ?? "",
         username: (user as any).username ?? "",
         bio: (user as any).bio ?? "",
@@ -293,107 +278,116 @@ export default function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Form {...profileForm}>
-              <form onSubmit={profileForm.handleSubmit((data) => profileMutation.mutate(data))} className="space-y-6">
-                <div className="flex items-center gap-6">
-                  <AvatarUploader
-                    currentAvatarUrl={profileForm.watch("avatarUrl") || null}
-                    displayName={profileForm.watch("displayName") || user.displayName || "U"}
-                    onUploadComplete={(avatarPath) => {
-                      profileForm.setValue("avatarUrl", avatarPath);
-                      toast({
-                        title: "Avatar uploaded",
-                        description: "Your profile picture has been updated.",
-                      });
-                      refreshUser();
-                    }}
-                  />
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">
-                      Click the camera icon to upload a new profile picture
-                    </p>
-                  </div>
+            <div className="space-y-6">
+              <div className="flex items-center gap-6">
+                <AvatarUploader
+                  currentAvatarUrl={profileFields.avatarUrl || null}
+                  displayName={profileFields.displayName || user.displayName || "U"}
+                  onUploadComplete={(avatarPath) => {
+                    setProfileFields(prev => ({ ...prev, avatarUrl: avatarPath }));
+                    toast({
+                      title: "Avatar uploaded",
+                      description: "Your profile picture has been updated.",
+                    });
+                    refreshUser();
+                  }}
+                />
+                <div className="flex-1">
+                  <p className="text-sm text-muted-foreground">
+                    Click the camera icon to upload a new profile picture
+                  </p>
                 </div>
+              </div>
 
-                <FormField
-                  control={profileForm.control}
-                  name="displayName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Display Name</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="Your display name" 
-                          {...field}
-                          data-testid="input-display-name"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Display Name</label>
+                <Input
+                  placeholder="Your display name"
+                  value={profileFields.displayName}
+                  onChange={e => {
+                    setProfileFields(prev => ({ ...prev, displayName: e.target.value }));
+                    setProfileErrors(prev => ({ ...prev, displayName: "" }));
+                  }}
+                  data-testid="input-display-name"
                 />
+                {profileErrors.displayName && (
+                  <p className="text-sm text-destructive">{profileErrors.displayName}</p>
+                )}
+              </div>
 
-                <FormField
-                  control={profileForm.control}
-                  name="username"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Username</FormLabel>
-                      <FormControl>
-                        <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground">@</span>
-                          <Input 
-                            placeholder="username" 
-                            {...field}
-                            data-testid="input-username"
-                          />
-                        </div>
-                      </FormControl>
-                      <FormDescription>
-                        Unique username used for identification (3-20 characters)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Username</label>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">@</span>
+                  <Input
+                    placeholder="username"
+                    value={profileFields.username}
+                    onChange={e => {
+                      setProfileFields(prev => ({ ...prev, username: e.target.value }));
+                      setProfileErrors(prev => ({ ...prev, username: "" }));
+                    }}
+                    data-testid="input-username"
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Unique username used for identification (3-20 characters, or leave empty)
+                </p>
+                {profileErrors.username && (
+                  <p className="text-sm text-destructive">{profileErrors.username}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Bio</label>
+                <Textarea
+                  placeholder="Tell us about yourself..."
+                  className="resize-none"
+                  rows={4}
+                  value={profileFields.bio}
+                  onChange={e => {
+                    if (e.target.value.length <= 500) {
+                      setProfileFields(prev => ({ ...prev, bio: e.target.value }));
+                    }
+                  }}
+                  data-testid="input-bio"
                 />
+                <p className="text-sm text-muted-foreground">
+                  {profileFields.bio.length}/500 characters
+                </p>
+              </div>
 
-                <FormField
-                  control={profileForm.control}
-                  name="bio"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Bio</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Tell us about yourself..."
-                          className="resize-none"
-                          rows={4}
-                          {...field}
-                          data-testid="input-bio"
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        {(field.value?.length || 0)}/500 characters
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <Button 
-                  type="submit" 
-                  disabled={profileMutation.isPending}
-                  data-testid="button-save-profile"
-                >
-                  {profileMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4 mr-2" />
-                  )}
-                  Save Changes
-                </Button>
-              </form>
-            </Form>
+              <Button
+                onClick={() => {
+                  const errors: Record<string, string> = {};
+                  if (!profileFields.displayName || profileFields.displayName.trim().length < 2) {
+                    errors.displayName = "Display name must be at least 2 characters";
+                  }
+                  if (profileFields.username && profileFields.username.length > 0) {
+                    if (profileFields.username.length < 3) {
+                      errors.username = "Username must be at least 3 characters";
+                    } else if (profileFields.username.length > 20) {
+                      errors.username = "Username must be at most 20 characters";
+                    } else if (!/^[a-zA-Z0-9_]+$/.test(profileFields.username)) {
+                      errors.username = "Username can only contain letters, numbers and underscores";
+                    }
+                  }
+                  if (Object.keys(errors).length > 0) {
+                    setProfileErrors(errors);
+                    return;
+                  }
+                  profileMutation.mutate();
+                }}
+                disabled={profileMutation.isPending}
+                data-testid="button-save-profile"
+              >
+                {profileMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                Save Changes
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
