@@ -380,10 +380,8 @@ export default function SimulatorPage() {
     return () => { cancelled = true; };
   }, [selectedSymbol, timeframe]);
 
-  // Create/update chart when candleData changes
+  // Recreate the chart instance whenever the selected symbol changes
   useEffect(() => {
-    if (candleData.length === 0) return;
-
     // Clean up existing chart
     if (chartRef.current) {
       chartRef.current.remove();
@@ -391,49 +389,41 @@ export default function SimulatorPage() {
       seriesRef.current = null;
     }
 
-    const createChartInstance = () => {
-      if (!chartContainerRef.current) return;
+    if (!chartContainerRef.current) return;
 
-      const isDark = document.documentElement.classList.contains('dark');
-      const textColor = isDark ? 'hsl(210, 20%, 90%)' : 'hsl(0, 0%, 15%)';
+    const isDark = document.documentElement.classList.contains('dark');
+    const textColor = isDark ? 'hsl(210, 20%, 90%)' : 'hsl(0, 0%, 15%)';
 
-      const chart = createChart(chartContainerRef.current, {
-        layout: {
-          background: { type: ColorType.Solid, color: 'transparent' },
-          textColor,
-        },
-        grid: {
-          vertLines: { color: 'hsl(var(--border))' },
-          horzLines: { color: 'hsl(var(--border))' },
-        },
-        width: chartContainerRef.current.clientWidth,
-        height: 400,
-        timeScale: {
-          timeVisible: true,
-          secondsVisible: false,
-        },
-        handleScroll: true,
-        handleScale: true,
-      });
+    const chart = createChart(chartContainerRef.current, {
+      layout: {
+        background: { type: ColorType.Solid, color: 'transparent' },
+        textColor,
+      },
+      grid: {
+        vertLines: { color: 'hsl(var(--border))' },
+        horzLines: { color: 'hsl(var(--border))' },
+      },
+      width: chartContainerRef.current.clientWidth,
+      height: 400,
+      timeScale: {
+        timeVisible: true,
+        secondsVisible: false,
+      },
+      handleScroll: true,
+      handleScale: true,
+    });
 
-      const series = chart.addSeries(CandlestickSeries, {
-        upColor: 'hsl(142, 71%, 45%)',
-        downColor: 'hsl(0, 72%, 51%)',
-        borderUpColor: 'hsl(142, 71%, 45%)',
-        borderDownColor: 'hsl(0, 72%, 51%)',
-        wickUpColor: 'hsl(142, 71%, 45%)',
-        wickDownColor: 'hsl(0, 72%, 51%)',
-      });
+    const series = chart.addSeries(CandlestickSeries, {
+      upColor: 'hsl(142, 71%, 45%)',
+      downColor: 'hsl(0, 72%, 51%)',
+      borderUpColor: 'hsl(142, 71%, 45%)',
+      borderDownColor: 'hsl(0, 72%, 51%)',
+      wickUpColor: 'hsl(142, 71%, 45%)',
+      wickDownColor: 'hsl(0, 72%, 51%)',
+    });
 
-      // Show all generated candles but start view at the end
-      series.setData(candleData);
-      chart.timeScale().scrollToPosition(0, false);
-
-      chartRef.current = chart;
-      seriesRef.current = series;
-    };
-
-    const animationId = requestAnimationFrame(createChartInstance);
+    chartRef.current = chart;
+    seriesRef.current = series;
 
     const handleResize = () => {
       if (chartContainerRef.current && chartRef.current) {
@@ -443,7 +433,6 @@ export default function SimulatorPage() {
 
     window.addEventListener('resize', handleResize);
     return () => {
-      cancelAnimationFrame(animationId);
       window.removeEventListener('resize', handleResize);
       if (chartRef.current) {
         chartRef.current.remove();
@@ -451,7 +440,16 @@ export default function SimulatorPage() {
         seriesRef.current = null;
       }
     };
-  }, [candleData.length > 0 ? candleData[0].time : null, selectedSymbol]);
+  }, [selectedSymbol]);
+
+  // Push fresh candle data into the chart whenever candleData updates (e.g. symbol switch)
+  useEffect(() => {
+    if (candleData.length === 0 || !seriesRef.current) return;
+    seriesRef.current.setData(candleData);
+    if (chartRef.current) {
+      chartRef.current.timeScale().scrollToPosition(0, false);
+    }
+  }, [candleData]);
 
   // Track last update time for Page Visibility API catch-up
   const lastUpdateTimeRef = useRef<number>(Date.now());
